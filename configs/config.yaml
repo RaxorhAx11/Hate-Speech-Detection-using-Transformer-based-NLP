@@ -1,0 +1,49 @@
+model:
+  model_name: "distilbert-base-uncased"  # Switch to "roberta-base", "microsoft/deberta-v3-large", or "roberta-large" as needed
+  num_labels: 3
+  max_length: 128
+  dropout: 0.1
+
+dataset:
+  data_dir: "dataset"
+  sample_size_per_class: 5000  # Subsample size for each of the 3 classes (Safe, Offensive, Hate Speech) to keep local CPU runs fast. Set to 0 to use all available data.
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  random_seed: 42
+
+preprocessing:
+  lowercase: true
+  remove_urls: true
+  remove_mentions: true
+  remove_html: true
+  normalize_emojis: true
+  normalize_repeated_chars: true
+  normalize_unicode: true
+  remove_duplicates: true
+  language_filter: "en"
+  handle_hashtags: true
+
+training:
+  output_dir: "saved_models"
+  logging_dir: "logs"
+  learning_rate: 2e-5
+  batch_size: 16
+  epochs: 3
+  weight_decay: 0.01
+  gradient_accumulation_steps: 2
+  max_grad_norm: 1.0
+  warmup_ratio: 0.1
+  early_stopping_patience: 2
+  fp16: false  # Auto-enabled in PyTorch script if GPU is available
+  evaluation_strategy: "epoch"
+  save_strategy: "epoch"
+  metric_for_best_model: "macro_f1"
+
+api:
+  host: "127.0.0.1"
+  port: 8000
+
+voice:
+  speech_rate: 150
+  volume: 1.0
