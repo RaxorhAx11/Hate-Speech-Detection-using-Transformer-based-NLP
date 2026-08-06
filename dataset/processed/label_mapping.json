@@ -1,0 +1,57 @@
+{
+    "davidson": {
+        "original_labels": {
+            "0": "hate speech",
+            "1": "offensive language",
+            "2": "neither"
+        },
+        "mapping": {
+            "0": 2,
+            "1": 1,
+            "2": 0
+        }
+    },
+    "olid": {
+        "original_labels": {
+            "0": "non-offensive",
+            "1": "offensive"
+        },
+        "mapping": {
+            "0": 0,
+            "1": 1
+        }
+    },
+    "hatexplain": {
+        "original_labels": {
+            "normal": "Safe",
+            "offensive": "Offensive",
+            "hatespeech": "Hate Speech"
+        },
+        "mapping": {
+            "normal": 0,
+            "offensive": 1,
+            "hatespeech": 2
+        }
+    },
+    "jigsaw": {
+        "description": "Multi-label rule mapping based on binary flags.",
+        "rules": {
+            "Hate Speech (2)": "identity_hate == 1 or threat == 1",
+            "Offensive (1)": "toxic == 1 or severe_toxic == 1 or obscene == 1 or insult == 1",
+            "Safe (0)": "All other cases"
+        }
+    },
+    "civil_comments": {
+        "description": "Annotator fraction rule mapping using 0.5 threshold.",
+        "rules": {
+            "Hate Speech (2)": "identity_attack >= 0.5 or threat >= 0.5",
+            "Offensive (1)": "toxicity >= 0.5 or severe_toxicity >= 0.5 or obscene >= 0.5 or insult >= 0.5 or sexual_explicit >= 0.5",
+            "Safe (0)": "All other cases"
+        }
+    },
+    "target_labels": {
+        "0": "Safe",
+        "1": "Offensive",
+        "2": "Hate Speech"
+    }
+}

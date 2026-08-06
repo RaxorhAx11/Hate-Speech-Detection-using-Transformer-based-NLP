@@ -1,0 +1,22 @@
+2026-08-06 08:55:26,640 - download_datasets - INFO - --- STARTING DATASET DOWNLOAD PIPELINE ---
+2026-08-06 08:55:26,640 - download_datasets - INFO - Copying Davidson dataset from legacy folder: D:\Hate Speech Detection using Transformer-based NLP\dataset\davidson.csv
+2026-08-06 08:55:26,643 - download_datasets - INFO - Copying HateXplain dataset from legacy folder: D:\Hate Speech Detection using Transformer-based NLP\dataset\hatexplain.json
+2026-08-06 08:55:26,650 - download_datasets - INFO - Loading OLID dataset from HuggingFace cardiffnlp/tweet_eval...
+2026-08-06 08:55:34,379 - download_datasets - INFO - OLID saved to dataset/raw\olid\olid.csv. Size: 14100 rows.
+2026-08-06 08:55:34,382 - download_datasets - INFO - Attempting to load Jigsaw dataset from HuggingFace (thesofakillers/jigsaw-toxic-comment-classification-challenge)...
+2026-08-06 08:55:48,712 - download_datasets - INFO - Jigsaw dataset saved to dataset/raw\jigsaw\train.csv. Size: 159571 rows.
+2026-08-06 08:55:48,749 - download_datasets - INFO - Attempting to stream Civil Comments dataset from HuggingFace google/civil_comments...
+2026-08-06 08:55:54,778 - download_datasets - INFO - Streaming first 50000 comments from google/civil_comments...
+2026-08-06 08:56:19,353 - download_datasets - INFO - Civil Comments saved to dataset/raw\civil_comments\train.csv. Size: 50000 rows.
+2026-08-06 08:56:19,368 - download_datasets - INFO - --- DATASET DOWNLOAD PIPELINE COMPLETED ---
+2026-08-06 08:56:28,600 - validate_dataset - INFO - --- STARTING DATASET VALIDATION PIPELINE ---
+2026-08-06 08:56:33,115 - validate_dataset - INFO - Validation report saved to dataset/reports\validation_report.md
+2026-08-06 08:56:33,115 - validate_dataset - INFO - --- DATASET VALIDATION PIPELINE COMPLETED ---
+2026-08-06 08:56:49,028 - normalize_labels - INFO - --- STARTING LABEL NORMALIZATION ---
+2026-08-06 08:56:49,111 - normalize_labels - INFO - Davidson normalized: 24783 rows saved to dataset/processed\davidson_normalized.csv
+2026-08-06 08:56:49,179 - normalize_labels - INFO - OLID normalized: 14047 rows saved to dataset/processed\olid_normalized.csv
+2026-08-06 08:56:49,846 - normalize_labels - INFO - HateXplain normalized: 20148 rows saved to dataset/processed\hatexplain_normalized.csv
+2026-08-06 08:56:53,506 - normalize_labels - INFO - Jigsaw normalized: 159571 rows saved to dataset/processed\jigsaw_normalized.csv
+2026-08-06 08:56:54,611 - normalize_labels - INFO - Civil Comments normalized: 49205 rows saved to dataset/processed\civil_comments_normalized.csv
+2026-08-06 08:56:54,617 - normalize_labels - INFO - Label mapping configuration saved to dataset/processed\label_mapping.json
+2026-08-06 08:56:54,617 - normalize_labels - INFO - --- LABEL NORMALIZATION COMPLETED ---

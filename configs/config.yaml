@@ -6,11 +6,19 @@ model:
 
 dataset:
   data_dir: "dataset"
-  sample_size_per_class: 5000  # Subsample size for each of the 3 classes (Safe, Offensive, Hate Speech) to keep local CPU runs fast. Set to 0 to use all available data.
+  raw_dir: "dataset/raw"
+  processed_dir: "dataset/processed"
+  merged_dir: "dataset/merged"
+  reports_dir: "dataset/reports"
+  cache_dir: "dataset/cache"
+  sample_size_per_class: 5000  # Subsample size for each of the 3 classes to keep runs fast. Set to 0 to use all available data.
   train_ratio: 0.8
   val_ratio: 0.1
   test_ratio: 0.1
   random_seed: 42
+  min_text_length: 5           # Minimum character length for valid text
+  conflict_resolution: "majority_vote" # Strategy: majority_vote or severity_priority
+  near_duplicate_threshold: 0.90 # Jaccard similarity threshold for near duplicate detection
 
 preprocessing:
   lowercase: true
@@ -23,6 +31,14 @@ preprocessing:
   remove_duplicates: true
   language_filter: "en"
   handle_hashtags: true
+  remove_emails: true
+  normalize_whitespace: true
+  normalize_punctuation: true
+  remove_invisible_chars: true
+  normalize_quotes: true
+  handle_reddit_formatting: true
+  handle_markdown_formatting: true
+  remove_corrupted_unicode: true
 
 training:
   output_dir: "saved_models"
