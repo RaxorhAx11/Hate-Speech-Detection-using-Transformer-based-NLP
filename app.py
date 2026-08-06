@@ -1,23 +1,51 @@
 import os
+import time
 import logging
-from fastapi import FastAPI, HTTPException
+import json
+from typing import Dict, Any, List
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import Dict
 from inference import HateSpeechInference, LABEL_MAP
 from config import load_config
-
-# Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
 
 # Load config
 config = load_config()
 
-# Define API request schema
-class PredictionRequest(BaseModel):
-    text: str = Field(..., description="The raw input text to analyze for hate speech", example="I hate you so much!")
+# Setup structured logging
+log_dir = config.training.logging_dir or "logs"
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, "api.log")
 
-# Define API response schema
+# Configure logging format
+logging.basicConfig(
+    level=logging.INFO,
+    format='{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": %(message)s}',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(log_file, encoding="utf-8")
+    ]
+)
+logger = logging.getLogger("api_logger")
+
+# Initialise FastAPI App
+app = FastAPI(
+    title="Advanced Hate Speech Detection API",
+    description="Production-grade API to classify text into Safe, Offensive, or Hate Speech using transformer models.",
+    version="1.0.0"
+)
+
+# Inference engine instance placeholder
+inference_engine = None
+
+# Define API schemas
+class PredictionRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="The raw input text to analyze for hate speech", example="I hate you so much!")
+
+class BatchPredictionRequest(BaseModel):
+    texts: List[str] = Field(..., min_items=1, description="List of raw input texts to analyze", example=["I hate you!", "I love programming."])
+
 class Probabilities(BaseModel):
     Safe: float = Field(..., description="Probability of safe text in percentage")
     Offensive: float = Field(..., description="Probability of offensive text in percentage")
@@ -30,17 +58,13 @@ class PredictionResponse(BaseModel):
     prediction: str = Field(..., description="The predicted class label (Safe, Offensive, or Hate Speech)")
     confidence: float = Field(..., description="Confidence score of the prediction in percentage")
     probabilities: Probabilities = Field(..., description="Detailed class probability distribution")
+    processing_time_ms: float = Field(..., description="Processing time in milliseconds")
 
-# Initialize FastAPI App
-app = FastAPI(
-    title="Advanced Hate Speech Detection API",
-    description="Production-grade API to classify text into Safe, Offensive, or Hate Speech using transformer models.",
-    version="1.0.0"
-)
+class BatchPredictionResponse(BaseModel):
+    predictions: List[PredictionResponse] = Field(..., description="List of prediction results")
+    total_processing_time_ms: float = Field(..., description="Total processing time in milliseconds")
 
-# Inference engine instance placeholder
-inference_engine = None
-
+# Startup model loading
 @app.on_event("startup")
 def load_model_on_startup():
     """Loads the model and tokenizer into memory on API startup."""
@@ -49,71 +73,220 @@ def load_model_on_startup():
     
     if not os.path.exists(model_path):
         logger.warning(
-            f"Best model not found at '{model_path}'. Predictions will fail until the model is trained. "
-            "Please run 'python train.py' to train and save the model."
+            json.dumps({
+                "event": "model_load_skipped",
+                "reason": "checkpoint_missing",
+                "path": model_path,
+                "msg": "Best model not found. Predictions will fail until model is trained."
+            })
         )
     else:
         try:
             inference_engine = HateSpeechInference(model_path=model_path)
-            logger.info("Best model loaded successfully on startup.")
+            logger.info(
+                json.dumps({
+                    "event": "model_loaded",
+                    "path": model_path,
+                    "device": str(inference_engine.device)
+                })
+            )
         except Exception as e:
-            logger.error(f"Failed to load the model on startup: {e}")
+            logger.error(
+                json.dumps({
+                    "event": "model_load_failed",
+                    "error": str(e)
+                })
+            )
 
+# Custom Request Validation Error Handler
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    error_details = exc.errors()
+    logger.warning(
+        json.dumps({
+            "event": "validation_error",
+            "path": request.url.path,
+            "errors": error_details
+        })
+    )
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": "Validation error",
+            "errors": [{"field": e["loc"][-1], "message": e["msg"]} for e in error_details]
+        }
+    )
+
+# Custom General Exception Handler
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        json.dumps({
+            "event": "unhandled_exception",
+            "path": request.url.path,
+            "error": str(exc)
+        }, default=str),
+        exc_info=True
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": f"Internal server error: {str(exc)}"}
+    )
+
+# Request logger middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration_ms = (time.time() - start_time) * 1000
+    
+    # Exclude health checks from verbose logging to keep logs clean
+    if request.url.path != "/health":
+        logger.info(
+            json.dumps({
+                "event": "api_request",
+                "client_ip": request.client.host if request.client else "unknown",
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": round(duration_ms, 2)
+            })
+        )
+    return response
+
+# GET /health
 @app.get("/health", summary="Health Check")
 def health_check():
-    """Verifies that the API service is running and checking if the model is loaded."""
+    """Verifies that the API service is running and model is loaded."""
     model_loaded = inference_engine is not None
     return {
         "status": "healthy" if model_loaded else "degraded",
         "model_loaded": model_loaded,
-        "message": "API running. Model is loaded." if model_loaded else "API running. Model is NOT loaded. Run training first."
+        "device": str(inference_engine.device) if model_loaded else None,
+        "model_name": config.model.model_name,
+        "timestamp": time.time()
     }
 
+# GET /model-info
+@app.get("/model-info", summary="Model Metadata Information")
+def model_info():
+    """Returns metadata details about the configured and loaded transformer model."""
+    model_loaded = inference_engine is not None
+    model_path = os.path.join(config.training.output_dir, "best_model")
+    
+    return {
+        "model_name": config.model.model_name,
+        "num_labels": config.model.num_labels,
+        "max_length": config.model.max_length,
+        "dropout": config.model.dropout,
+        "labels": list(LABEL_MAP.values()),
+        "device": str(inference_engine.device) if model_loaded else "not loaded",
+        "model_path": os.path.abspath(model_path) if os.path.exists(model_path) else "not found",
+        "model_loaded": model_loaded
+    }
+
+# POST /predict
 @app.post("/predict", response_model=PredictionResponse, summary="Analyze text for hate speech")
 def predict_hate_speech(request: PredictionRequest):
     """
-    Analyzes input text and classifies it as either:
-    - **Safe**: Clean, non-offensive text.
-    - **Offensive**: Toxic or profane words without targeted hate.
-    - **Hate Speech**: Targeted slurs or offensive statements attacking individuals or groups based on identity features.
+    Analyzes input text and classifies it as Safe, Offensive, or Hate Speech.
     """
     global inference_engine
     if inference_engine is None:
-        # Try to load on the fly if it wasn't loaded (e.g. if trained after startup)
         model_path = os.path.join(config.training.output_dir, "best_model")
         if os.path.exists(model_path):
             try:
                 inference_engine = HateSpeechInference(model_path=model_path)
-                logger.info("Model loaded dynamically on request.")
             except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Failed to load model: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to load model dynamically: {e}")
         else:
             raise HTTPException(
                 status_code=503,
                 detail="Model is not available. Please run training (train.py) before attempting predictions."
             )
             
-    try:
-        result = inference_engine.predict(request.text)
-        
-        # Prepare response mapping exactly to requirements
-        # Note the alias mappings for 'Hate Speech' in Probabilities pydantic class
-        probs = result["probabilities"]
-        
-        response = PredictionResponse(
-            prediction=result["prediction"],
-            confidence=result["confidence"],
-            probabilities=Probabilities(
-                Safe=probs.get("Safe", 0.0),
-                Offensive=probs.get("Offensive", 0.0),
-                **{"Hate Speech": probs.get("Hate Speech", 0.0)}
+    # Perform prediction
+    res = inference_engine.predict(request.text)
+    
+    probs = res["probabilities"]
+    response = PredictionResponse(
+        prediction=res["prediction"],
+        confidence=res["confidence"],
+        probabilities=Probabilities(
+            Safe=probs.get("Safe", 0.0),
+            Offensive=probs.get("Offensive", 0.0),
+            **{"Hate Speech": probs.get("Hate Speech", 0.0)}
+        ),
+        processing_time_ms=res["processing_time_ms"]
+    )
+    
+    # Structured logging for predictions
+    logger.info(
+        json.dumps({
+            "event": "prediction_made",
+            "text_length": len(request.text),
+            "prediction": res["prediction"],
+            "confidence": res["confidence"],
+            "processing_time_ms": res["processing_time_ms"]
+        })
+    )
+    return response
+
+# POST /batch-predict
+@app.post("/batch-predict", response_model=BatchPredictionResponse, summary="Analyze batch of texts for hate speech")
+def batch_predict_hate_speech(request: BatchPredictionRequest):
+    """
+    Analyzes a list of input texts in an optimized single batch.
+    """
+    global inference_engine
+    if inference_engine is None:
+        model_path = os.path.join(config.training.output_dir, "best_model")
+        if os.path.exists(model_path):
+            try:
+                inference_engine = HateSpeechInference(model_path=model_path)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to load model dynamically: {e}")
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="Model is not available. Please run training (train.py) before attempting predictions."
+            )
+            
+    # Run batch prediction
+    res = inference_engine.predict_batch(request.texts)
+    
+    predictions_response = []
+    for pred in res["predictions"]:
+        probs = pred["probabilities"]
+        predictions_response.append(
+            PredictionResponse(
+                prediction=pred["prediction"],
+                confidence=pred["confidence"],
+                probabilities=Probabilities(
+                    Safe=probs.get("Safe", 0.0),
+                    Offensive=probs.get("Offensive", 0.0),
+                    **{"Hate Speech": probs.get("Hate Speech", 0.0)}
+                ),
+                processing_time_ms=pred["processing_time_ms"]
             )
         )
-        return response
-    except Exception as e:
-        logger.error(f"Inference error occurred: {e}")
-        raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
+        
+    response = BatchPredictionResponse(
+        predictions=predictions_response,
+        total_processing_time_ms=res["total_processing_time_ms"]
+    )
+    
+    # Structured logging for batch predictions
+    logger.info(
+        json.dumps({
+            "event": "batch_prediction_made",
+            "batch_size": len(request.texts),
+            "total_processing_time_ms": res["total_processing_time_ms"]
+        })
+    )
+    return response
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=config.api.host, port=config.api.port)
+    # Use API configuration settings (with env variable fallback applied in config.py)
+    uvicorn.run("app:app", host=config.api.host, port=config.api.port, reload=False)

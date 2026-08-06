@@ -1,0 +1,150 @@
+{
+    "total_samples": 261251,
+    "class_distribution": {
+        "Safe": 205117,
+        "Offensive": 45884,
+        "Hate Speech": 10250
+    },
+    "sentence_length": {
+        "average_words": 51.78,
+        "max_words": 1052,
+        "average_characters": 296.65,
+        "max_characters": 4999
+    },
+    "vocabulary_size": 597846,
+    "top_frequent_words": [
+        {
+            "word": "the",
+            "count": 617159
+        },
+        {
+            "word": "to",
+            "count": 373131
+        },
+        {
+            "word": "and",
+            "count": 285481
+        },
+        {
+            "word": "of",
+            "count": 285445
+        },
+        {
+            "word": "a",
+            "count": 278162
+        },
+        {
+            "word": "i",
+            "count": 222380
+        },
+        {
+            "word": "is",
+            "count": 215547
+        },
+        {
+            "word": "you",
+            "count": 201627
+        },
+        {
+            "word": "that",
+            "count": 184007
+        },
+        {
+            "word": "in",
+            "count": 182714
+        },
+        {
+            "word": "it",
+            "count": 131837
+        },
+        {
+            "word": "for",
+            "count": 127531
+        },
+        {
+            "word": "not",
+            "count": 110048
+        },
+        {
+            "word": "this",
+            "count": 103563
+        },
+        {
+            "word": "on",
+            "count": 103507
+        },
+        {
+            "word": "be",
+            "count": 99896
+        },
+        {
+            "word": "are",
+            "count": 96007
+        },
+        {
+            "word": "have",
+            "count": 89721
+        },
+        {
+            "word": "as",
+            "count": 88790
+        },
+        {
+            "word": "with",
+            "count": 81770
+        }
+    ],
+    "merge_statistics": {
+        "total_merged_input": 267290,
+        "noise_removed": {
+            "too_short": 130,
+            "too_few_words": 599,
+            "only_numbers": 3,
+            "only_symbols": 13,
+            "spam": 423,
+            "total_removed": 1026
+        },
+        "exact_and_canonical_duplicates_removed": 0,
+        "conflicts_detected": 47,
+        "near_duplicates_removed": 4264,
+        "total_output_rows": 261252
+    },
+    "split_statistics": {
+        "class_counts_merged": {
+            "0": 205117,
+            "1": 45884,
+            "2": 10250
+        },
+        "class_weights_loss": {
+            "0": 0.4246,
+            "1": 1.8979,
+            "2": 8.496
+        },
+        "splits": {
+            "train": {
+                "total": 12000,
+                "label_distribution": {
+                    "1": 4000,
+                    "2": 4000,
+                    "0": 4000
+                }
+            },
+            "validation": {
+                "total": 1500,
+                "label_distribution": {
+                    "2": 500,
+                    "1": 500,
+                    "0": 500
+                }
+            },
+            "test": {
+                "total": 1500,
+                "label_distribution": {
+                    "2": 500,
+                    "1": 500,
+                    "0": 500
+                }
+            }
+        }
+    }
+}

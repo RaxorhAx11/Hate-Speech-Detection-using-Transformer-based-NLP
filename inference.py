@@ -1,4 +1,6 @@
 import os
+import time
+import random
 import logging
 import torch
 import numpy as np
@@ -13,10 +15,10 @@ logger = logging.getLogger(__name__)
 LABEL_MAP = {0: "Safe", 1: "Offensive", 2: "Hate Speech"}
 
 class HateSpeechInference:
-    def __init__(self, model_path: str = None):
-        config = load_config()
-        self.max_length = config.model.max_length
-        self.model_path = model_path or os.path.join(config.training.output_dir, "best_model")
+    def __init__(self, model_path: str = None, device: str = None):
+        self.config = load_config()
+        self.max_length = self.config.model.max_length
+        self.model_path = model_path or os.path.join(self.config.training.output_dir, "best_model")
         
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(f"Model path {self.model_path} not found. Train the model first.")
@@ -29,16 +31,39 @@ class HateSpeechInference:
             output_attentions=True
         )
         
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Determine device
+        device_str = device or self.config.model.device
+        if device_str == "cuda" and torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif device_str.startswith("cuda:") and torch.cuda.is_available():
+            self.device = torch.device(device_str)
+        else:
+            self.device = torch.device("cpu")
+            
+        logger.info(f"Using device: {self.device}")
         self.model.to(self.device)
         self.model.eval()
+        
+        self.seed = self.config.dataset.random_seed
+        self._set_seeds(self.seed)
 
-    def predict(self, text: str) -> Dict[str, Any]:
+    def _set_seeds(self, seed: int):
+        """Sets random seeds across random, numpy, and PyTorch for deterministic predictions."""
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
+    def predict(self, text: str, explain: bool = False) -> Dict[str, Any]:
         """
         Runs inference on raw text.
         Returns:
-            Dictionary containing prediction class, confidence, probabilities, and token importance.
+            Dictionary containing prediction class, confidence, probabilities, token importance, and processing time.
         """
+        start_time = time.time()
+        self._set_seeds(self.seed)
+        
         # Preprocess text
         clean_text = preprocess_text(text, language_filter=None)
         if not clean_text.strip():
@@ -61,10 +86,12 @@ class HateSpeechInference:
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         
         # Forward pass
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs = self.model(**inputs)
             logits = outputs.logits
-            attentions = outputs.attentions  # Tuple of layers: (batch, heads, seq, seq)
+            
+            # Extract attentions (only if available)
+            attentions = getattr(outputs, "attentions", None)
             
             # Compute probabilities
             probs = torch.softmax(logits, dim=-1).cpu().numpy()[0]
@@ -78,27 +105,103 @@ class HateSpeechInference:
         }
         
         # Compute Token Importance via Self-Attention
-        token_importance = self._compute_attention_importance(tokens, attentions)
+        token_importance = []
+        if attentions:
+            token_importance = self._compute_attention_importance(tokens, attentions)
         
-        # Try SHAP explanation if package is available
+        # Try SHAP explanation if explain is True and package is available
         shap_explanation = None
-        try:
-            shap_explanation = self._explain_with_shap(clean_text)
-        except Exception as e:
-            logger.debug(f"SHAP explanation skipped or failed: {e}")
+        if explain:
+            try:
+                shap_explanation = self._explain_with_shap(clean_text)
+            except Exception as e:
+                logger.debug(f"SHAP explanation skipped or failed: {e}")
             
+        processing_time_ms = (time.time() - start_time) * 1000
+        
         result = {
             "prediction": prediction,
             "confidence": round(confidence, 2),
             "probabilities": {k: round(v, 2) for k, v in probabilities_dict.items()},
             "tokens": tokens,
-            "token_importance": token_importance
+            "token_importance": token_importance,
+            "processing_time_ms": round(processing_time_ms, 2)
         }
         
         if shap_explanation:
             result["shap_importance"] = shap_explanation
             
         return result
+
+    def predict_batch(self, texts: List[str]) -> Dict[str, Any]:
+        """
+        Runs batched inference on a list of raw text inputs.
+        Returns:
+            Dictionary containing list of predictions and total processing time.
+        """
+        start_time = time.time()
+        if not texts:
+            return {
+                "predictions": [],
+                "total_processing_time_ms": round((time.time() - start_time) * 1000, 2)
+            }
+            
+        self._set_seeds(self.seed)
+        
+        # Preprocess all texts
+        cleaned_texts = []
+        for text in texts:
+            clean = preprocess_text(text, language_filter=None)
+            if not clean.strip():
+                clean = text.strip() or "empty input"
+            cleaned_texts.append(clean)
+            
+        # Tokenize batch
+        inputs = self.tokenizer(
+            cleaned_texts,
+            padding=True,
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors="pt"
+        )
+        
+        # Move inputs to device
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        
+        # Forward pass
+        with torch.inference_mode():
+            outputs = self.model(**inputs)
+            logits = outputs.logits
+            probs = torch.softmax(logits, dim=-1).cpu().numpy()
+            
+        predictions_list = []
+        for idx, text in enumerate(texts):
+            class_probs = probs[idx]
+            pred_class_id = int(np.argmax(class_probs))
+            prediction = LABEL_MAP[pred_class_id]
+            confidence = float(class_probs[pred_class_id] * 100)
+            
+            probabilities_dict = {
+                LABEL_MAP[i]: float(class_probs[i] * 100) for i in range(3)
+            }
+            
+            predictions_list.append({
+                "text": text,
+                "prediction": prediction,
+                "confidence": round(confidence, 2),
+                "probabilities": {k: round(v, 2) for k, v in probabilities_dict.items()}
+            })
+            
+        total_processing_time_ms = (time.time() - start_time) * 1000
+        
+        # Distribute timing metadata
+        for p in predictions_list:
+            p["processing_time_ms"] = round(total_processing_time_ms / len(texts), 2)
+            
+        return {
+            "predictions": predictions_list,
+            "total_processing_time_ms": round(total_processing_time_ms, 2)
+        }
 
     def _compute_attention_importance(self, tokens: List[str], attentions: Tuple[torch.Tensor]) -> List[Dict[str, Any]]:
         """
@@ -145,7 +248,7 @@ class HateSpeechInference:
                     return_tensors="pt"
                 )
                 inputs = {k: v.to(self.device) for k, v in inputs.items()}
-                with torch.no_grad():
+                with torch.inference_mode():
                     logits = self.model(**inputs).logits
                     probs = torch.softmax(logits, dim=-1).cpu().numpy()
                 return probs
@@ -179,5 +282,12 @@ if __name__ == "__main__":
         res = engine.predict("I hate you so much, you are the worst!")
         print("Prediction result:")
         print(res)
+        
+        batch_res = engine.predict_batch([
+            "I love programming in Python.",
+            "You are stupid and I hate your face."
+        ])
+        print("\nBatch prediction result:")
+        print(batch_res)
     except Exception as e:
         print(f"Inference testing skipped: {e}")

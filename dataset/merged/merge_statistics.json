@@ -1,0 +1,15 @@
+{
+    "total_merged_input": 267290,
+    "noise_removed": {
+        "too_short": 130,
+        "too_few_words": 599,
+        "only_numbers": 3,
+        "only_symbols": 13,
+        "spam": 423,
+        "total_removed": 1026
+    },
+    "exact_and_canonical_duplicates_removed": 0,
+    "conflicts_detected": 47,
+    "near_duplicates_removed": 4264,
+    "total_output_rows": 261252
+}

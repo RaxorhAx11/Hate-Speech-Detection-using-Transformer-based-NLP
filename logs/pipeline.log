@@ -20,3 +20,124 @@
 2026-08-06 08:56:54,611 - normalize_labels - INFO - Civil Comments normalized: 49205 rows saved to dataset/processed\civil_comments_normalized.csv
 2026-08-06 08:56:54,617 - normalize_labels - INFO - Label mapping configuration saved to dataset/processed\label_mapping.json
 2026-08-06 08:56:54,617 - normalize_labels - INFO - --- LABEL NORMALIZATION COMPLETED ---
+2026-08-06 08:57:11,874 - clean_dataset - INFO - --- STARTING DATASET CLEANING AND LANGUAGE FILTERING ---
+2026-08-06 08:57:11,905 - clean_dataset - INFO - Cleaning davidson (24783 rows)...
+2026-08-06 09:00:45,723 - clean_dataset - INFO - --- STARTING DATASET CLEANING AND LANGUAGE FILTERING ---
+2026-08-06 09:00:45,758 - clean_dataset - INFO - Cleaning davidson (24783 rows)...
+2026-08-06 09:00:52,287 - clean_dataset - INFO - davidson cleaned successfully: 24757 rows. Reduction rate: 0.1%
+2026-08-06 09:00:52,333 - clean_dataset - INFO - Cleaning olid (14047 rows)...
+2026-08-06 09:00:57,282 - clean_dataset - INFO - olid cleaned successfully: 14042 rows. Reduction rate: 0.04%
+2026-08-06 09:00:57,361 - clean_dataset - INFO - Cleaning hatexplain (20148 rows)...
+2026-08-06 09:01:03,198 - clean_dataset - INFO - hatexplain cleaned successfully: 20123 rows. Reduction rate: 0.12%
+2026-08-06 09:01:04,085 - clean_dataset - INFO - Cleaning jigsaw (159571 rows)...
+2026-08-06 09:03:36,824 - clean_dataset - INFO - jigsaw cleaned successfully: 159215 rows. Reduction rate: 0.22%
+2026-08-06 09:03:37,129 - clean_dataset - INFO - Cleaning civil_comments (49205 rows)...
+2026-08-06 09:04:01,668 - clean_dataset - INFO - civil_comments cleaned successfully: 49153 rows. Reduction rate: 0.11%
+2026-08-06 09:04:01,685 - clean_dataset - INFO - Cleaning report saved to dataset/reports\cleaning_report.md
+2026-08-06 09:04:01,685 - clean_dataset - INFO - --- DATASET CLEANING AND LANGUAGE FILTERING COMPLETED ---
+2026-08-06 09:04:23,931 - merge_datasets - INFO - --- STARTING DATASET MERGING AND DEDUPLICATION ---
+2026-08-06 09:04:23,969 - merge_datasets - INFO - Loaded davidson_cleaned.csv: 24757 rows.
+2026-08-06 09:04:23,994 - merge_datasets - INFO - Loaded olid_cleaned.csv: 14042 rows.
+2026-08-06 09:04:24,040 - merge_datasets - INFO - Loaded hatexplain_cleaned.csv: 20123 rows.
+2026-08-06 09:04:24,865 - merge_datasets - INFO - Loaded jigsaw_cleaned.csv: 159215 rows.
+2026-08-06 09:04:25,039 - merge_datasets - INFO - Loaded civil_comments_cleaned.csv: 49153 rows.
+2026-08-06 09:04:25,046 - merge_datasets - INFO - Combined dataset size: 267290 rows.
+2026-08-06 09:04:25,046 - merge_datasets - INFO - Performing noise removal...
+2026-08-06 09:04:27,610 - merge_datasets - INFO - Noise removal complete. Removed 1026 rows.
+2026-08-06 09:04:27,610 - merge_datasets - INFO - Deduplicating on exact, case-insensitive, and whitespace matches...
+2026-08-06 09:04:27,873 - merge_datasets - INFO - Detecting label conflicts...
+2026-08-06 09:04:28,616 - merge_datasets - INFO - Conflict resolution complete. Resolved conflicts for 47 texts.
+2026-08-06 09:04:28,770 - merge_datasets - INFO - Detecting near-duplicates using length-filtered Jaccard similarity...
+2026-08-06 09:04:31,351 - merge_datasets - INFO - Building inverted index for near-duplicate detection...
+2026-08-06 09:04:35,096 - merge_datasets - INFO - Running inverted-index Jaccard similarity checks...
+2026-08-06 09:05:39,468 - merge_datasets - INFO - --- STARTING DATASET MERGING AND DEDUPLICATION ---
+2026-08-06 09:05:39,502 - merge_datasets - INFO - Loaded davidson_cleaned.csv: 24757 rows.
+2026-08-06 09:05:39,525 - merge_datasets - INFO - Loaded olid_cleaned.csv: 14042 rows.
+2026-08-06 09:05:39,568 - merge_datasets - INFO - Loaded hatexplain_cleaned.csv: 20123 rows.
+2026-08-06 09:05:40,364 - merge_datasets - INFO - Loaded jigsaw_cleaned.csv: 159215 rows.
+2026-08-06 09:05:40,534 - merge_datasets - INFO - Loaded civil_comments_cleaned.csv: 49153 rows.
+2026-08-06 09:05:40,540 - merge_datasets - INFO - Combined dataset size: 267290 rows.
+2026-08-06 09:05:40,540 - merge_datasets - INFO - Performing noise removal...
+2026-08-06 09:05:42,981 - merge_datasets - INFO - Noise removal complete. Removed 1026 rows.
+2026-08-06 09:05:42,982 - merge_datasets - INFO - Deduplicating on exact, case-insensitive, and whitespace matches...
+2026-08-06 09:05:43,222 - merge_datasets - INFO - Detecting label conflicts...
+2026-08-06 09:05:43,936 - merge_datasets - INFO - Conflict resolution complete. Resolved conflicts for 47 texts.
+2026-08-06 09:05:44,057 - merge_datasets - INFO - Detecting near-duplicates using length-filtered Jaccard similarity...
+2026-08-06 09:05:44,057 - merge_datasets - INFO - Tokenizing texts for near-duplicate checks...
+2026-08-06 09:05:46,552 - merge_datasets - INFO - Computing corpus word frequencies...
+2026-08-06 09:05:48,620 - merge_datasets - INFO - Identified 437 high-frequency words to exclude from indexing (threshold: 2655 documents).
+2026-08-06 09:05:48,620 - merge_datasets - INFO - Building optimized inverted index...
+2026-08-06 09:05:52,455 - merge_datasets - INFO - Running Jaccard similarity comparison via inverted index candidates...
+2026-08-06 09:06:48,837 - merge_datasets - INFO - --- STARTING DATASET MERGING AND DEDUPLICATION ---
+2026-08-06 09:06:48,873 - merge_datasets - INFO - Loaded davidson_cleaned.csv: 24757 rows.
+2026-08-06 09:06:48,901 - merge_datasets - INFO - Loaded olid_cleaned.csv: 14042 rows.
+2026-08-06 09:06:48,944 - merge_datasets - INFO - Loaded hatexplain_cleaned.csv: 20123 rows.
+2026-08-06 09:06:49,752 - merge_datasets - INFO - Loaded jigsaw_cleaned.csv: 159215 rows.
+2026-08-06 09:06:49,946 - merge_datasets - INFO - Loaded civil_comments_cleaned.csv: 49153 rows.
+2026-08-06 09:06:49,953 - merge_datasets - INFO - Combined dataset size: 267290 rows.
+2026-08-06 09:06:49,953 - merge_datasets - INFO - Performing noise removal...
+2026-08-06 09:06:52,465 - merge_datasets - INFO - Noise removal complete. Removed 1026 rows.
+2026-08-06 09:06:52,465 - merge_datasets - INFO - Deduplicating on exact, case-insensitive, and whitespace matches...
+2026-08-06 09:06:52,739 - merge_datasets - INFO - Detecting label conflicts...
+2026-08-06 09:06:53,538 - merge_datasets - INFO - Conflict resolution complete. Resolved conflicts for 47 texts.
+2026-08-06 09:06:53,684 - merge_datasets - INFO - Detecting near-duplicates using length-filtered Jaccard similarity...
+2026-08-06 09:06:53,684 - merge_datasets - INFO - Tokenizing texts for near-duplicate checks...
+2026-08-06 09:06:56,424 - merge_datasets - INFO - Computing corpus word frequencies...
+2026-08-06 09:06:58,980 - merge_datasets - INFO - Building prefix-filtered inverted index...
+2026-08-06 09:07:05,304 - merge_datasets - INFO - Running prefix-filtered Jaccard similarity checks...
+2026-08-06 09:07:11,387 - merge_datasets - INFO - Near-duplicate detection complete. Found 4264 near-duplicates.
+2026-08-06 09:07:27,066 - merge_datasets - INFO - --- STARTING DATASET MERGING AND DEDUPLICATION ---
+2026-08-06 09:07:27,100 - merge_datasets - INFO - Loaded davidson_cleaned.csv: 24757 rows.
+2026-08-06 09:07:27,123 - merge_datasets - INFO - Loaded olid_cleaned.csv: 14042 rows.
+2026-08-06 09:07:27,165 - merge_datasets - INFO - Loaded hatexplain_cleaned.csv: 20123 rows.
+2026-08-06 09:07:27,909 - merge_datasets - INFO - Loaded jigsaw_cleaned.csv: 159215 rows.
+2026-08-06 09:07:28,077 - merge_datasets - INFO - Loaded civil_comments_cleaned.csv: 49153 rows.
+2026-08-06 09:07:28,082 - merge_datasets - INFO - Combined dataset size: 267290 rows.
+2026-08-06 09:07:28,082 - merge_datasets - INFO - Performing noise removal...
+2026-08-06 09:07:30,567 - merge_datasets - INFO - Noise removal complete. Removed 1026 rows.
+2026-08-06 09:07:30,567 - merge_datasets - INFO - Deduplicating on exact, case-insensitive, and whitespace matches...
+2026-08-06 09:07:30,828 - merge_datasets - INFO - Detecting label conflicts...
+2026-08-06 09:07:31,777 - merge_datasets - INFO - Conflict resolution complete. Resolved conflicts for 47 texts.
+2026-08-06 09:07:31,935 - merge_datasets - INFO - Detecting near-duplicates using length-filtered Jaccard similarity...
+2026-08-06 09:07:31,935 - merge_datasets - INFO - Tokenizing texts for near-duplicate checks...
+2026-08-06 09:07:35,048 - merge_datasets - INFO - Computing corpus word frequencies...
+2026-08-06 09:07:37,427 - merge_datasets - INFO - Building prefix-filtered inverted index...
+2026-08-06 09:07:44,969 - merge_datasets - INFO - Running prefix-filtered Jaccard similarity checks...
+2026-08-06 09:07:50,307 - merge_datasets - INFO - Near-duplicate detection complete. Found 4264 near-duplicates.
+2026-08-06 09:07:50,343 - merge_datasets - INFO - Final merged dataset size: 261252 rows.
+2026-08-06 09:07:51,995 - merge_datasets - INFO - Saved merged dataset to dataset/merged\clean_dataset.csv and copied to dataset\clean_dataset.csv
+2026-08-06 09:07:51,997 - merge_datasets - INFO - Conflict report saved to dataset/reports\conflict_report.md
+2026-08-06 09:07:51,997 - merge_datasets - INFO - --- DATASET MERGING AND DEDUPLICATION COMPLETED ---
+2026-08-06 09:08:07,682 - split_dataset - INFO - Loaded merged dataset: 261251 rows.
+2026-08-06 09:08:07,686 - split_dataset - INFO - Class distribution:
+2026-08-06 09:08:07,686 - split_dataset - INFO - Class 0 (Safe): 205117 samples (78.51%)
+2026-08-06 09:08:07,686 - split_dataset - INFO - Class 1 (Offensive): 45884 samples (17.56%)
+2026-08-06 09:08:07,686 - split_dataset - INFO - Class 2 (Hate Speech): 10250 samples (3.92%)
+2026-08-06 09:08:07,688 - split_dataset - INFO - Calculated class weights: {0: 0.4246, 1: 1.8979, 2: 8.496}
+2026-08-06 09:08:07,688 - split_dataset - INFO - Subsampling requested: target size per class = 5000
+2026-08-06 09:08:07,711 - split_dataset - INFO - Class 0 (Safe): Undersampled from 205117 to 5000
+2026-08-06 09:08:07,723 - split_dataset - INFO - Class 1 (Offensive): Undersampled from 45884 to 5000
+2026-08-06 09:08:07,726 - split_dataset - INFO - Class 2 (Hate Speech): Undersampled from 10250 to 5000
+2026-08-06 09:08:07,748 - split_dataset - INFO - Total size after config-based subsampling: 15000 rows.
+2026-08-06 09:08:07,758 - split_dataset - INFO - Splits generated: Train=12000, Val=1500, Test=1500
+2026-08-06 09:08:07,764 - split_dataset - INFO - Leakage verification passed: 0 text overlaps between train, validation, and test splits.
+2026-08-06 09:08:07,828 - split_dataset - INFO - Saved dataset\train.csv
+2026-08-06 09:08:07,829 - split_dataset - INFO - Saved dataset\validation.csv
+2026-08-06 09:08:07,829 - split_dataset - INFO - Saved dataset\test.csv
+2026-08-06 09:08:07,830 - split_dataset - INFO - --- DATASET SPLITTING COMPLETED ---
+2026-08-06 09:08:17,437 - generate_reports - INFO - --- STARTING REPORT GENERATION AND VISUALIZATION ---
+2026-08-06 09:08:18,462 - generate_reports - INFO - Generating reports for 261251 samples...
+2026-08-06 09:08:23,191 - generate_reports - INFO - Saved dataset_statistics.json
+2026-08-06 09:08:24,579 - generate_reports - INFO - Saved class_distribution.png
+2026-08-06 09:08:25,920 - generate_reports - INFO - Saved sentence_length_distribution.png
+2026-08-06 09:08:26,343 - generate_reports - INFO - Saved top_word_frequencies.png
+2026-08-06 09:08:26,568 - generate_reports - INFO - Saved pipeline_reduction_summary.png
+2026-08-06 09:08:26,814 - generate_reports - INFO - --- REPORT GENERATION AND VISUALIZATION COMPLETED ---
+2026-08-06 09:08:33,196 - verify_qa - INFO - --- STARTING QUALITY ASSURANCE CHECKS ---
+2026-08-06 09:08:33,491 - verify_qa - INFO - Train validation PASSED. Row count: 12000. Labels: {1: 4000, 2: 4000, 0: 4000}
+2026-08-06 09:08:33,501 - verify_qa - INFO - Validation validation PASSED. Row count: 1500. Labels: {2: 500, 1: 500, 0: 500}
+2026-08-06 09:08:33,511 - verify_qa - INFO - Test validation PASSED. Row count: 1500. Labels: {2: 500, 1: 500, 0: 500}
+2026-08-06 09:08:33,565 - verify_qa - INFO - Deduplication verification PASSED. Zero overlap between train, val, and test splits.
+2026-08-06 09:08:33,565 - verify_qa - INFO - =========================================
+2026-08-06 09:08:33,565 - verify_qa - INFO -    ALL QUALITY ASSURANCE CHECKS PASSED   
+2026-08-06 09:08:33,566 - verify_qa - INFO - =========================================

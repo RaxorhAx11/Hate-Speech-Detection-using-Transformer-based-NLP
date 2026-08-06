@@ -1,0 +1,38 @@
+{
+    "class_counts_merged": {
+        "0": 205117,
+        "1": 45884,
+        "2": 10250
+    },
+    "class_weights_loss": {
+        "0": 0.4246,
+        "1": 1.8979,
+        "2": 8.496
+    },
+    "splits": {
+        "train": {
+            "total": 12000,
+            "label_distribution": {
+                "1": 4000,
+                "2": 4000,
+                "0": 4000
+            }
+        },
+        "validation": {
+            "total": 1500,
+            "label_distribution": {
+                "2": 500,
+                "1": 500,
+                "0": 500
+            }
+        },
+        "test": {
+            "total": 1500,
+            "label_distribution": {
+                "2": 500,
+                "1": 500,
+                "0": 500
+            }
+        }
+    }
+}

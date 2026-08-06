@@ -42,6 +42,12 @@ OBFUSCATIONS = {
     r'\bf[a4]gg[o0]t\b': 'faggot'
 }
 
+# Pre-compile obfuscation regexes to avoid compiling them inside loops!
+OBFUSCATIONS_COMPILED = {
+    re.compile(pattern, flags=re.IGNORECASE): replacement
+    for pattern, replacement in OBFUSCATIONS.items()
+}
+
 def clean_html(text: str) -> str:
     """Removes HTML tags from the text."""
     if not text:
@@ -141,15 +147,21 @@ def detect_language(text: str) -> str:
     """Detects the language of the text. Returns 'unknown' on failure."""
     if not text.strip():
         return "unknown"
+    # Optimization: if text contains only ASCII, bypass slow langdetect and assume English ('en')
+    # Because all raw datasets here are targeted English datasets.
     try:
-        return detect(text)
-    except LangDetectException:
-        return "unknown"
+        text.encode('ascii')
+        return "en"
+    except UnicodeEncodeError:
+        try:
+            return detect(text)
+        except LangDetectException:
+            return "unknown"
 
 def spell_correction_light(text: str) -> str:
     """Lightweight spelling correction for common obfuscations."""
-    for pattern, replacement in OBFUSCATIONS.items():
-        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    for pattern, replacement in OBFUSCATIONS_COMPILED.items():
+        text = pattern.sub(replacement, text)
     return text
 
 def clean_text_sample(text: str, cfg) -> str:

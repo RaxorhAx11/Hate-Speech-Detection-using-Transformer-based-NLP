@@ -4,7 +4,9 @@ import pandas as pd
 import numpy as np
 import json
 import re
+import shutil
 from collections import Counter
+from tqdm import tqdm
 
 # Add project root to sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -60,18 +62,45 @@ def remove_noise(df: pd.DataFrame, text_col: str, min_length: int) -> tuple:
     return clean_df, noise_stats
 
 def detect_near_duplicates(df: pd.DataFrame, text_col: str, threshold: float) -> list:
-    """Detects near duplicate indices using length-filtered Jaccard similarity."""
+    """Detects near duplicate indices using prefix-filtered inverted index and Jaccard similarity."""
+    logger.info("Tokenizing texts for near-duplicate checks...")
     texts = df[text_col].astype(str).tolist()
     word_sets = [set(t.split()) for t in texts]
     lengths = [len(ws) for ws in word_sets]
     
+    # 1. Count word frequencies across the corpus to rank words
+    logger.info("Computing corpus word frequencies...")
+    all_words = []
+    for ws in word_sets:
+        all_words.extend(ws)
+    word_counts = Counter(all_words)
+    
+    # 2. Build inverted index for prefix words only
+    logger.info("Building prefix-filtered inverted index...")
+    inverted_index = {}
+    sorted_word_lists = []
+    
+    for idx, ws in enumerate(word_sets):
+        # Sort words in this document by their global corpus count (increasing, i.e. least frequent first)
+        sorted_words = sorted(list(ws), key=lambda w: word_counts[w])
+        sorted_word_lists.append(sorted_words)
+        
+        l_i = len(ws)
+        # Prefix length k = int(l_i * (1 - threshold)) + 1
+        k = int(l_i * (1.0 - threshold)) + 1
+        
+        # Index only the first k words (the prefix)
+        prefix_words = sorted_words[:k]
+        for word in prefix_words:
+            if word not in inverted_index:
+                inverted_index[word] = []
+            inverted_index[word].append(idx)
+            
     duplicates_to_remove = set()
     n = len(df)
     
-    # Sort indices by length to do length filtering
-    indices = sorted(range(n), key=lambda i: lengths[i])
-    
-    for i_idx, i in enumerate(indices):
+    logger.info("Running prefix-filtered Jaccard similarity checks...")
+    for i in tqdm(range(n), desc="Near duplicate check"):
         if i in duplicates_to_remove:
             continue
         ws_i = word_sets[i]
@@ -79,18 +108,26 @@ def detect_near_duplicates(df: pd.DataFrame, text_col: str, threshold: float) ->
         if len_i == 0:
             continue
             
-        for j_idx in range(i_idx + 1, n):
-            j = indices[j_idx]
+        sorted_words_i = sorted_word_lists[i]
+        k_i = int(len_i * (1.0 - threshold)) + 1
+        prefix_words_i = sorted_words_i[:k_i]
+        
+        # Query candidates using only prefix words
+        candidates = set()
+        for word in prefix_words_i:
+            candidates.update(inverted_index.get(word, []))
+            
+        # Filter candidates: only check indices greater than i, and not already scheduled for removal
+        candidates = {j for j in candidates if j > i and j not in duplicates_to_remove}
+        
+        for j in candidates:
             len_j = lengths[j]
             
             # Length ratio check
-            if len_i / len_j < threshold:
-                break
-                
-            if j in duplicates_to_remove:
+            min_len, max_len = min(len_i, len_j), max(len_i, len_j)
+            if min_len / max_len < threshold:
                 continue
                 
-            # Jaccard calculation
             ws_j = word_sets[j]
             intersection = len(ws_i.intersection(ws_j))
             union = len_i + len_j - intersection
@@ -209,6 +246,9 @@ def main():
     # Deduplicate remaining canonical texts to make sure no duplicate remains
     resolved_df = resolved_df.drop_duplicates(subset=["canonical_text"])
     
+    # Reset index BEFORE running near-duplicate check so position indexes align with index labels
+    resolved_df = resolved_df.reset_index(drop=True)
+    
     # Clean up canonical text column and rename back to normal columns
     resolved_df = resolved_df.rename(columns={"text": "raw_text_ref", "canonical_text": "text"})
     resolved_df = resolved_df[["text", "label", "source"]]
@@ -224,7 +264,11 @@ def main():
     # Save the final merged dataset
     dest_path = os.path.join(merged_dir, "clean_dataset.csv")
     final_df.to_csv(dest_path, index=False, encoding="utf-8")
-    logger.info(f"Saved merged dataset to {dest_path}")
+    
+    # Copy to dataset root for downstream model compatibility
+    shutil_dest_path = os.path.join(config.dataset.data_dir, "clean_dataset.csv")
+    shutil.copy(dest_path, shutil_dest_path)
+    logger.info(f"Saved merged dataset to {dest_path} and copied to {shutil_dest_path}")
     
     # Write Conflict Report
     conflict_report = "# Label Conflict Resolution Report\n\n"

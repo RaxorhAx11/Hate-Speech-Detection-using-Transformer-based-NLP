@@ -64,13 +64,21 @@ Install all required Python dependencies:
 pip install -r requirements.txt
 ```
 
-### 2. Dataset Building
+### 2. Dataset Building (Modular Prep Pipeline)
 
-Execute the dataset compilation script to download, clean, deduplicate, and split the data:
+Execute the end-to-end dataset preparation pipeline using the orchestrator:
 ```bash
-python dataset_builder.py
+python scripts/run_pipeline.py
 ```
-This downloads Davidson, OLID, Jigsaw, Civil Comments, and HateXplain, applies text preprocessing, resolves conflicting labels, and outputs balanced `train.csv`, `val.csv`, and `test.csv` splits to the `dataset/` directory.
+This single command runs all pipeline steps sequentially. Alternatively, you can run the individual modular scripts in the scripts folder:
+* **Download Raw Data**: `python scripts/download_datasets.py` (Downloads/caches raw Davidson, OLID, HateXplain, Jigsaw, and Civil Comments datasets under `dataset/raw/`)
+* **Validate Structure**: `python scripts/validate_dataset.py` (Performs columns, encoding, and corruption validation checks, exporting `dataset/reports/validation_report.md`)
+* **Normalize Labels**: `python scripts/normalize_labels.py` (Standardizes all label schemas into 3 classes: Safe (0), Offensive (1), and Hate Speech (2), exporting `dataset/processed/label_mapping.json`)
+* **Clean Text**: `python scripts/clean_dataset.py` (Applies optimized regex preprocessed cleaning and English-only language checks, generating `dataset/reports/cleaning_report.md`)
+* **Merge & Deduplicate**: `python scripts/merge_datasets.py` (Orchestrates exact/near-duplicate Jaccard removal and resolves label conflicts using majority vote or severity priority rules, exporting `dataset/reports/conflict_report.md` and saving the final unified dataset)
+* **Split Stratified**: `python scripts/split_dataset.py` (Generates stratified, leakage-free `train.csv`, `validation.csv`, and `test.csv` splits inside the `dataset/` folder)
+* **Generate Reports**: `python scripts/generate_reports.py` (Calculates statistics and exports visualizations like class distribution, sentence lengths, top words, and pipeline stage sizes under `dataset/reports/`)
+* **Quality Assurance**: `python scripts/verify_qa.py` (Verifies final dataset UTF-8 compliance, label validity, zero nulls, and zero duplicate overlap/leakage between train, validation, and test splits)
 
 ### 3. Model Training
 
@@ -104,35 +112,165 @@ Run the FastAPI backend server:
 ```bash
 python app.py
 ```
-The server exposes:
-* **GET `/health`**: Health check.
-* **POST `/predict`**: Takes JSON input:
-  ```json
-  { "text": "I hate you so much!" }
+By default, the server runs on `http://127.0.0.1:8000`. You can configure host, port, device, or model path using environment variables:
+| Environment Variable | Description | Example |
+| :--- | :--- | :--- |
+| `PORT` or `API_PORT` | Port to run the server on (default: `8000`) | `PORT=8080` |
+| `HOST` or `API_HOST` | Host address to bind the server to (default: `127.0.0.1`) | `HOST=0.0.0.0` |
+| `DEVICE` | Force device selection: `cpu` or `cuda` (default: auto-detects CUDA) | `DEVICE=cpu` |
+| `MODEL_PATH` | Path to the best trained transformer directory | `MODEL_PATH=saved_models/best_model` |
+
+---
+
+## Production REST API Reference
+
+The server exposes 4 production endpoints:
+
+### 1. GET `/health`
+Verifies that the API service is running, details if the model is currently loaded in memory, and states the inference hardware device.
+- **Request Example**:
+  ```bash
+  curl -s http://127.0.0.1:8000/health
   ```
-  Returns:
+- **Response Format**:
   ```json
   {
-    "prediction": "Hate Speech",
-    "confidence": 98.42,
-    "probabilities": {
-      "Safe": 0.3,
-      "Offensive": 1.2,
-      "Hate Speech": 98.5
-    }
+    "status": "healthy",
+    "model_loaded": true,
+    "device": "cpu",
+    "model_name": "distilbert-base-uncased",
+    "timestamp": 1785987519.28
   }
   ```
 
+### 2. GET `/model-info`
+Exposes the model configuration metadata, architecture settings, and supported output labels.
+- **Request Example**:
+  ```bash
+  curl -s http://127.0.0.1:8000/model-info
+  ```
+- **Response Format**:
+  ```json
+  {
+    "model_name": "distilbert-base-uncased",
+    "num_labels": 3,
+    "max_length": 128,
+    "dropout": 0.1,
+    "labels": ["Safe", "Offensive", "Hate Speech"],
+    "device": "cpu",
+    "model_path": "D:\\project\\saved_models\\best_model",
+    "model_loaded": true
+  }
+  ```
+
+### 3. POST `/predict`
+Analyzes a single input text and classifies it. Requests are validated via Pydantic to ensure text is present and non-empty.
+- **Request Format**:
+  ```json
+  {
+    "text": "I hate you so much!"
+  }
+  ```
+- **Invocations**:
+  - **Bash / Curl**:
+    ```bash
+    curl -X POST -H "Content-Type: application/json" -d '{"text": "I hate you so much!"}' http://127.0.0.1:8000/predict
+    ```
+  - **PowerShell**:
+    ```powershell
+    Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/predict -ContentType "application/json" -Body '{"text": "I hate you so much!"}'
+    ```
+- **Response Format**:
+  ```json
+  {
+    "prediction": "Offensive",
+    "confidence": 49.01,
+    "probabilities": {
+      "Safe": 3.55,
+      "Offensive": 49.01,
+      "Hate Speech": 47.43
+    },
+    "processing_time_ms": 32.58
+  }
+  ```
+
+### 4. POST `/batch-predict`
+Runs optimized batch inference on a list of texts in a single forward pass, returning prediction metrics and aggregated performance timing.
+- **Request Format**:
+  ```json
+  {
+    "texts": [
+      "I love programming.",
+      "Get out of here you jerk!"
+    ]
+  }
+  ```
+- **Invocations**:
+  - **Bash / Curl**:
+    ```bash
+    curl -X POST -H "Content-Type: application/json" -d '{"texts": ["I love programming.", "Get out of here you jerk!"]}' http://127.0.0.1:8000/batch-predict
+    ```
+  - **PowerShell**:
+    ```powershell
+    Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/batch-predict -ContentType "application/json" -Body '{"texts": ["I love programming.", "Get out of here you jerk!"]}' | ConvertTo-Json -Depth 5
+    ```
+- **Response Format**:
+  ```json
+  {
+    "predictions": [
+      {
+        "prediction": "Safe",
+        "confidence": 99.05,
+        "probabilities": {
+          "Safe": 99.05,
+          "Offensive": 0.72,
+          "Hate Speech": 0.23
+        },
+        "processing_time_ms": 17.99
+      },
+      {
+        "prediction": "Offensive",
+        "confidence": 90.97,
+        "probabilities": {
+          "Safe": 0.37,
+          "Offensive": 90.97,
+          "Hate Speech": 8.65
+        },
+        "processing_time_ms": 17.99
+      }
+    ],
+    "total_processing_time_ms": 35.97
+  }
+  ```
+
+---
+
 ### 6. Voice and Text Command Center
 
-Execute the voice console:
+Execute the voice console client:
 ```bash
 python voice.py
 ```
-This console allows you to select between text typing and voice recording. When you speak, it converts your voice input to text via Speech-to-Text, classifies the text, and reads the classification out loud via offline Text-to-Speech (TTS).
+This client offers four interactive menu options:
+1. **Text input prediction**: Prompts for keyboard text and queries `/predict`.
+2. **Voice input prediction (Single phrase)**: Records from your default microphone (with sounddevice fallback), performs Google Speech-to-Text translation, queries the backend API, and reads the classification result out loud using offline Text-to-Speech (TTS).
+3. **Continuous voice recognition loop**: Runs a continuous microphone audio stream, automatically adjusting for noise once, analyzing text on-the-fly via the API, and speaking predictions back to you. Say `"stop continuous"`, `"exit"`, or `"quit"` to end the loop.
+4. **Exit**: Closes the application.
+
+*If the API server is down, `voice.py` automatically falls back to loading model checkpoints locally to maintain offline support.*
 
 ---
 
 ## Interpretability Feature
 
-During inference (`inference.py`), the model aggregates attention weights from self-attention layers to trace which tokens contributed most to the prediction. If the `shap` package is available, it will also return SHAP attribution scores per token.
+During single inference (`inference.py`), the model aggregates attention weights from self-attention layers to trace which tokens contributed most to the prediction. If you instantiate the engine with `explain=True` (and the `shap` package is available), it will return SHAP attribution scores per token.
+
+---
+
+## Running Automated Tests
+
+Run the complete backend test suite using python's unittest runner:
+```bash
+python -m unittest discover -s tests -p "test_*.py"
+```
+This verifies model configuration loading, endpoint health, request parameter validation, batch tokenizations, error handlers, and client voice failovers. All tests execute deterministically on CPU.
