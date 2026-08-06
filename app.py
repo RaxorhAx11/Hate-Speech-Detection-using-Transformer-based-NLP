@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from fastapi.middleware.cors import CORSMiddleware
 from inference import HateSpeechInference, LABEL_MAP
 from config import load_config
 
@@ -34,6 +35,15 @@ app = FastAPI(
     title="Advanced Hate Speech Detection API",
     description="Production-grade API to classify text into Safe, Offensive, or Hate Speech using transformer models.",
     version="1.0.0"
+)
+
+# Configure CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for dev/local simplicity. Can be hardened if needed.
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Inference engine instance placeholder
@@ -184,6 +194,60 @@ def model_info():
         "model_path": os.path.abspath(model_path) if os.path.exists(model_path) else "not found",
         "model_loaded": model_loaded
     }
+
+# GET /metrics
+@app.get("/metrics", summary="Model Evaluation Metrics")
+def evaluation_metrics():
+    """Returns the evaluation metrics from classification_report.txt."""
+    import re
+    eval_dir = "evaluation_plots"
+    report_path = os.path.join(eval_dir, "classification_report.txt")
+    
+    if not os.path.exists(report_path):
+        return {
+            "available": False,
+            "error": "Classification report not found. Run evaluate.py first."
+        }
+        
+    try:
+        with open(report_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            
+        # Parse metrics using regex
+        accuracy_match = re.search(r"Accuracy:\s*([\d\.]+)", content)
+        precision_match = re.search(r"Precision \(Macro\):\s*([\d\.]+)", content)
+        recall_match = re.search(r"Recall \(Macro\):\s*([\d\.]+)", content)
+        f1_match = re.search(r"F1 \(Macro\):\s*([\d\.]+)", content)
+        roc_auc_match = re.search(r"ROC-AUC \(Macro\):\s*([\d\.]+)", content)
+        
+        # Parse per-class metrics
+        class_metrics = {}
+        for label in ["Safe", "Offensive", "Hate Speech"]:
+            pattern = rf"{label}\s+([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)\s+(\d+)"
+            class_match = re.search(pattern, content)
+            if class_match:
+                class_metrics[label] = {
+                    "precision": float(class_match.group(1)),
+                    "recall": float(class_match.group(2)),
+                    "f1_score": float(class_match.group(3)),
+                    "support": int(class_match.group(4))
+                }
+                
+        return {
+            "available": True,
+            "accuracy": float(accuracy_match.group(1)) if accuracy_match else 0.0,
+            "precision_macro": float(precision_match.group(1)) if precision_match else 0.0,
+            "recall_macro": float(recall_match.group(1)) if recall_match else 0.0,
+            "f1_macro": float(f1_match.group(1)) if f1_match else 0.0,
+            "roc_auc_macro": float(roc_auc_match.group(1)) if roc_auc_match else 0.0,
+            "class_metrics": class_metrics
+        }
+    except Exception as e:
+        return {
+            "available": False,
+            "error": f"Failed to parse classification report: {str(e)}"
+        }
+
 
 # POST /predict
 @app.post("/predict", response_model=PredictionResponse, summary="Analyze text for hate speech")

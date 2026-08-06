@@ -261,6 +261,41 @@ This client offers four interactive menu options:
 
 ---
 
+### 7. Web Frontend Application (React + TypeScript)
+
+We have added a modern, minimalist React + Vite + TypeScript + Tailwind CSS v4 frontend dashboard located in the `frontend/` directory.
+
+#### Running the Full Stack in Dev Mode
+
+To run both services in parallel:
+
+1. **Start the Backend API Server**:
+   From the repository root directory:
+   ```bash
+   python app.py
+   ```
+   The backend server runs on `http://127.0.0.1:8000`.
+
+2. **Start the React Frontend Dev Server**:
+   Open another terminal, navigate to the `frontend/` directory:
+   ```bash
+   npm run dev
+   ```
+   The dev server runs on `http://localhost:5173/`.
+
+Open `http://localhost:5173/` in your web browser to access the visual workspace.
+
+#### Compiling for Production
+To compile and bundle the React code into optimized, static HTML/JS/CSS assets:
+```bash
+npm run build
+```
+Static production files will be output to the `frontend/dist/` directory.
+
+---
+
+---
+
 ## Interpretability Feature
 
 During single inference (`inference.py`), the model aggregates attention weights from self-attention layers to trace which tokens contributed most to the prediction. If you instantiate the engine with `explain=True` (and the `shap` package is available), it will return SHAP attribution scores per token.

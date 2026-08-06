@@ -133,5 +133,23 @@ class TestHateSpeechDetection(unittest.TestCase):
         # Verify fallback called
         client._run_local_prediction.assert_called_once_with("Test local fallback text.")
 
+    def test_metrics_endpoint(self):
+        response = self.client.get("/metrics")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        if data.get("available"):
+            self.assertIn("accuracy", data)
+            self.assertIn("precision_macro", data)
+            self.assertIn("recall_macro", data)
+            self.assertIn("f1_macro", data)
+            self.assertIn("roc_auc_macro", data)
+            self.assertIn("class_metrics", data)
+            self.assertIn("Safe", data["class_metrics"])
+            self.assertIn("Offensive", data["class_metrics"])
+            self.assertIn("Hate Speech", data["class_metrics"])
+        else:
+            self.assertIn("error", data)
+
 if __name__ == "__main__":
     unittest.main()
+
