@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
-import { Server, Volume2, Info, Check, RefreshCw, AlertTriangle } from "lucide-react";
+import { Server, Volume2, Info, Check, RefreshCw, AlertTriangle, Sliders } from "lucide-react";
 
 export const Settings: React.FC = () => {
   const {
@@ -16,6 +16,10 @@ export const Settings: React.FC = () => {
     updateVoiceRate,
     voiceURI,
     updateVoiceURI,
+    maxWordLimit,
+    updateMaxWordLimit,
+    autoPredictOnStop,
+    updateAutoPredictOnStop,
   } = useApp();
 
   const [inputUrl, setInputUrl] = useState(apiUrl);
@@ -140,6 +144,52 @@ export const Settings: React.FC = () => {
                   Local Speech Engine is loading or unsupported on this device.
                 </p>
               )}
+            </div>
+          </div>
+
+          {/* Text Input & Prediction Options */}
+          <div className="bg-canvas border border-border-light rounded-sm p-6 space-y-6 shadow-sm">
+            <div className="flex items-center gap-2 border-b border-hairline pb-3">
+              <Sliders className="h-4 w-4 text-brand-primary" />
+              <h3 className="text-sm font-mono uppercase font-bold tracking-wider text-brand-primary">
+                Text & Prediction Options
+              </h3>
+            </div>
+
+            <div className="space-y-5">
+              {/* Max Word Limit */}
+              <div className="space-y-1.5">
+                <label htmlFor="max-word-limit" className="text-xs font-mono text-slate uppercase block font-semibold">
+                  Max Input Word Limit
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="max-word-limit"
+                    type="number"
+                    min="100"
+                    max="50000"
+                    step="100"
+                    value={maxWordLimit}
+                    onChange={(e) => updateMaxWordLimit(Math.max(100, parseInt(e.target.value, 10) || 5000))}
+                    className="w-32 text-xs px-3 py-2 border border-border-light rounded-sm outline-none focus:border-form-focus transition-colors bg-canvas"
+                  />
+                  <span className="text-xs text-slate italic">Words (at least 5000 is recommended)</span>
+                </div>
+              </div>
+
+              {/* Auto-predict on Stop */}
+              <div className="flex items-center gap-3 pt-2">
+                <input
+                  id="auto-predict-on-stop"
+                  type="checkbox"
+                  checked={autoPredictOnStop}
+                  onChange={(e) => updateAutoPredictOnStop(e.target.checked)}
+                  className="h-4 w-4 rounded border-border-light text-brand-primary focus:ring-focus-blue cursor-pointer"
+                />
+                <label htmlFor="auto-predict-on-stop" className="text-xs font-mono text-slate uppercase cursor-pointer select-none font-semibold">
+                  Auto-predict after recording
+                </label>
+              </div>
             </div>
           </div>
 

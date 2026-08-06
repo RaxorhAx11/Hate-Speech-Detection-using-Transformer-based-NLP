@@ -7,7 +7,12 @@ import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import { Mic, MicOff, Volume2, Trash2, Clipboard, ArrowRight, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 
 export const Prediction: React.FC = () => {
-  const { addToHistory } = useApp();
+  const {
+    addToHistory,
+    maxWordLimit,
+    autoPredictOnStop,
+    updateAutoPredictOnStop
+  } = useApp();
   
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,8 +29,12 @@ export const Prediction: React.FC = () => {
   const handleSpeechEnd = async (finalSpeechText: string) => {
     if (finalSpeechText.trim()) {
       setText(finalSpeechText);
-      // Auto predict when speech ends
-      await runPrediction(finalSpeechText);
+      if (autoPredictOnStop) {
+        setVoiceStatus("Processing...");
+        await runPrediction(finalSpeechText);
+      } else {
+        setVoiceStatus("Transcription Complete. You can edit the text now.");
+      }
     }
   };
 
@@ -43,8 +52,16 @@ export const Prediction: React.FC = () => {
     onEnd: handleSpeechEnd,
   });
 
-  // Track character limit
-  const maxCharLimit = 500;
+  // Calculate word count
+  const wordCount = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+  const isOverLimit = wordCount > maxWordLimit;
+
+  // Sync transcript in real-time as the user speaks
+  useEffect(() => {
+    if (isListening && transcript) {
+      setText(transcript);
+    }
+  }, [transcript, isListening]);
 
   // Handle errors and status from speech recognition hook
   useEffect(() => {
@@ -65,7 +82,7 @@ export const Prediction: React.FC = () => {
     try {
       const clipboardText = await navigator.clipboard.readText();
       if (clipboardText) {
-        setText((prev) => (prev + " " + clipboardText).trim().substring(0, maxCharLimit));
+        setText((prev) => (prev + " " + clipboardText).trim());
         setError(null);
       }
     } catch (err) {
@@ -195,14 +212,14 @@ export const Prediction: React.FC = () => {
           <textarea
             value={text}
             onChange={(e) => {
-              setText(e.target.value.substring(0, maxCharLimit));
+              setText(e.target.value);
               setError(null);
             }}
             placeholder="Write commentary here to analyze..."
             rows={5}
             className="w-full resize-none p-5 text-sm bg-transparent outline-none focus:border-form-focus transition-colors"
             style={{
-              borderColor: error ? "var(--color-error)" : undefined,
+              borderColor: error || isOverLimit ? "var(--color-error)" : undefined,
             }}
             disabled={loading || isListening}
           />
@@ -233,9 +250,9 @@ export const Prediction: React.FC = () => {
               </button>
             </div>
 
-            {/* Right: Char Counter */}
-            <div className="text-slate font-mono">
-              {text.length}/{maxCharLimit}
+            {/* Right: Word Counter */}
+            <div className={`font-mono ${isOverLimit ? "text-error font-semibold" : "text-slate"}`}>
+              {wordCount}/{maxWordLimit} words
             </div>
           </div>
         </div>
@@ -270,9 +287,13 @@ export const Prediction: React.FC = () => {
             {/* Transcript / Instructions */}
             <div className="space-y-2">
               {isListening ? (
-                <div className="p-4 rounded-sm border border-coral-soft/40 bg-coral-soft/5 min-h-[60px] flex items-center justify-center text-center">
+                <div className="p-4 rounded-sm border border-coral-soft/40 bg-coral-soft/5 min-h-[60px] flex flex-col items-center justify-center text-center gap-2">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-coral font-bold uppercase tracking-wider">
+                    <span className="h-2 w-2 rounded-full bg-coral animate-ping" />
+                    <span>Live Transcribing</span>
+                  </div>
                   <p className="text-sm italic text-brand-primary">
-                    {transcript ? `"${transcript}"` : "Microphone active. Speak now..."}
+                    {transcript ? `"${transcript}"` : "Speak continuously. The assistant is listening..."}
                   </p>
                 </div>
               ) : (
@@ -298,7 +319,7 @@ export const Prediction: React.FC = () => {
                     </p>
                   ) : (
                     <p>
-                      Click 'Start Recording' below, speak your commentary, and the system will automatically transcribe it, analyze for toxicity, and read out the result.
+                      Click 'Start Recording' below, speak your commentary, and the system will transcribe it continuously. You can edit the text and submit for prediction.
                     </p>
                   )}
                 </div>
@@ -348,6 +369,19 @@ export const Prediction: React.FC = () => {
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Clear & Reset</span>
               </button>
+
+              <div className="flex items-center gap-2 border-l border-hairline pl-4 py-1">
+                <input
+                  id="auto-predict-toggle"
+                  type="checkbox"
+                  checked={autoPredictOnStop}
+                  onChange={(e) => updateAutoPredictOnStop(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-border-light text-brand-primary focus:ring-focus-blue cursor-pointer"
+                />
+                <label htmlFor="auto-predict-toggle" className="text-xs font-mono text-slate uppercase cursor-pointer select-none font-medium">
+                  Auto-Predict
+                </label>
+              </div>
             </div>
           </div>
         ) : (
@@ -363,6 +397,18 @@ export const Prediction: React.FC = () => {
             <div className="space-y-1">
               <span className="font-semibold">Inference Error:</span>
               <p className="leading-relaxed">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {isOverLimit && (
+          <div className="flex items-start gap-3 p-4 rounded-sm border border-error/30 bg-error/5 text-xs text-error">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <span className="font-semibold">Validation Error:</span>
+              <p className="leading-relaxed">
+                Text input exceeds the maximum word limit of {maxWordLimit} words (currently {wordCount} words). Please shorten your input.
+              </p>
             </div>
           </div>
         )}
@@ -383,7 +429,7 @@ export const Prediction: React.FC = () => {
           {/* Main Predict CTA */}
           <button
             onClick={() => runPrediction()}
-            disabled={loading || isListening || !text.trim()}
+            disabled={loading || isListening || !text.trim() || isOverLimit}
             className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-brand-primary px-8 py-3.5 text-sm font-semibold text-white transition-all hover:bg-cohere-black active:scale-[0.98] disabled:bg-slate/40 disabled:scale-100 disabled:cursor-not-allowed"
           >
             {loading ? (

@@ -34,6 +34,10 @@ interface AppContextProps {
   updateVoiceRate: (rate: number) => void;
   voiceURI: string;
   updateVoiceURI: (uri: string) => void;
+  maxWordLimit: number;
+  updateMaxWordLimit: (limit: number) => void;
+  autoPredictOnStop: boolean;
+  updateAutoPredictOnStop: (enabled: boolean) => void;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -58,6 +62,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [voiceURI, setVoiceURI] = useState(() => {
     return localStorage.getItem("hate_speech_voice_uri") || "";
+  });
+
+  const [maxWordLimit, setMaxWordLimit] = useState<number>(() => {
+    const saved = localStorage.getItem("hate_speech_max_word_limit");
+    return saved ? parseInt(saved, 10) : 5000;
+  });
+
+  const [autoPredictOnStop, setAutoPredictOnStop] = useState<boolean>(() => {
+    const saved = localStorage.getItem("hate_speech_auto_predict_on_stop");
+    return saved ? saved === "true" : true;
   });
 
   // History State
@@ -91,6 +105,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateVoiceURI = (uri: string) => {
     localStorage.setItem("hate_speech_voice_uri", uri);
     setVoiceURI(uri);
+  };
+
+  const updateMaxWordLimit = (limit: number) => {
+    localStorage.setItem("hate_speech_max_word_limit", limit.toString());
+    setMaxWordLimit(limit);
+  };
+
+  const updateAutoPredictOnStop = (enabled: boolean) => {
+    localStorage.setItem("hate_speech_auto_predict_on_stop", enabled.toString());
+    setAutoPredictOnStop(enabled);
   };
 
   // Perform API checking
@@ -184,6 +208,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateVoiceRate,
         voiceURI,
         updateVoiceURI,
+        maxWordLimit,
+        updateMaxWordLimit,
+        autoPredictOnStop,
+        updateAutoPredictOnStop,
       }}
     >
       {children}
