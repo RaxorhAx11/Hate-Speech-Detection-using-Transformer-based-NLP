@@ -154,26 +154,34 @@ def train_model(
     if os.path.exists(run_dir):
         shutil.rmtree(run_dir)
         
-    training_args = TrainingArguments(
-        output_dir=run_dir,
-        learning_rate=learning_rate,
-        per_device_train_batch_size=batch_size,
-        per_device_eval_batch_size=batch_size,
-        num_train_epochs=epochs,
-        weight_decay=weight_decay,
-        gradient_accumulation_steps=config.training.gradient_accumulation_steps,
-        max_grad_norm=config.training.max_grad_norm,
-        warmup_ratio=warmup_ratio,
-        logging_dir=config.training.logging_dir,
-        logging_steps=10,
-        save_strategy=config.training.save_strategy,
-        eval_strategy=config.training.evaluation_strategy,
-        load_best_model_at_end=True,
-        metric_for_best_model="eval_macro_f1",
-        greater_is_better=True,
-        fp16=fp16_enabled,
-        report_to="none"
-    )
+    import inspect
+    training_kwargs = {
+        "output_dir": run_dir,
+        "learning_rate": learning_rate,
+        "per_device_train_batch_size": batch_size,
+        "per_device_eval_batch_size": batch_size,
+        "num_train_epochs": epochs,
+        "weight_decay": weight_decay,
+        "gradient_accumulation_steps": config.training.gradient_accumulation_steps,
+        "max_grad_norm": config.training.max_grad_norm,
+        "warmup_ratio": warmup_ratio,
+        "logging_dir": config.training.logging_dir,
+        "logging_steps": 10,
+        "save_strategy": config.training.save_strategy,
+        "load_best_model_at_end": True,
+        "metric_for_best_model": "eval_macro_f1",
+        "greater_is_better": True,
+        "fp16": fp16_enabled,
+        "report_to": "none"
+    }
+    # Dynamically select eval_strategy (transformers >= 4.41) or evaluation_strategy (< 4.41)
+    sig_params = inspect.signature(TrainingArguments.__init__).parameters
+    if "eval_strategy" in sig_params:
+        training_kwargs["eval_strategy"] = config.training.evaluation_strategy
+    else:
+        training_kwargs["evaluation_strategy"] = config.training.evaluation_strategy
+
+    training_args = TrainingArguments(**training_kwargs)
     
     # Class weights for Weighted Loss
     class_weights = None

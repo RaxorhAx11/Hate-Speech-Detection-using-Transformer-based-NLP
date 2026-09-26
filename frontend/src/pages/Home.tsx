@@ -87,7 +87,7 @@ export const Home: React.FC = () => {
             Fine-tuned for balanced classification.
           </h2>
           <p className="text-sm text-body-muted leading-relaxed">
-            The model is fine-tuned on custom class weights to balance representation across Safe, Offensive, and Hate Speech annotations. The deployment is hosted in a FastAPI web service, utilizing attention mask configurations to secure deterministic, high-speed predictions.
+            The model is fine-tuned on custom class weights to balance representation across Safe, Offensive, and Hate Speech annotations. The model runs within a FastAPI web service, utilizing attention mask configurations to secure deterministic, high-speed predictions.
           </p>
           <div className="flex gap-4 pt-2">
             <div className="text-xs font-mono border border-hairline px-2.5 py-1 rounded bg-canvas/60 text-brand-primary">

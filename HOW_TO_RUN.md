@@ -1,6 +1,6 @@
 # How to Run the Hate Speech Detection Project
 
-This guide provides step-by-step instructions to run the entire pipeline, train models, deploy the FastAPI backend, run the React frontend, and run the voice assistant interface.
+This guide provides step-by-step instructions to run the entire pipeline, train models, run the FastAPI backend, run the React frontend, and run the voice assistant interface.
 
 ---
 
@@ -90,14 +90,4 @@ To execute backend verification checks:
 ```bash
 python -m unittest discover -s tests -p "test_*.py"
 ```
-
----
-
-## 8. Free Public Demo Deployment (Hugging Face Spaces)
-To deploy this full-stack application online for free for recruiters and portfolio viewing:
-1. Review the step-by-step instructions in [DEPLOYMENT.md](DEPLOYMENT.md).
-2. Create a free Docker Space on [Hugging Face Spaces](https://huggingface.co/new-space).
-3. Push or upload your code to the Space.
-4. Your live app will be accessible at:
-   `https://<username>-<space-name>.hf.space`
 

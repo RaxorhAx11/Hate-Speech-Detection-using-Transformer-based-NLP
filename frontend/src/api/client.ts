@@ -66,8 +66,8 @@ export const getDefaultApiBaseUrl = (): string => {
     if (window.location.port === "5173") {
       return "http://127.0.0.1:8000";
     }
-    // In production / deployed space (e.g. Hugging Face Spaces, Docker container),
-    // frontend is served by FastAPI on the same host and port.
+    // In production build environment,
+    // frontend is served on the same host and port.
     return window.location.origin;
   }
 

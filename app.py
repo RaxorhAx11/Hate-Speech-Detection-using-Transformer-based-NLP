@@ -463,7 +463,7 @@ with gr.Blocks(title="Hate Speech Detection AI") as demo:
             gr.Markdown(
                 """
                 ### REST API Endpoints
-                This deployment also exposes production REST API endpoints:
+                This server also exposes production REST API endpoints:
                 - `POST /predict` - Single text inference
                 - `POST /batch-predict` - Batch texts inference
                 - `GET /health` - Service & model health check
