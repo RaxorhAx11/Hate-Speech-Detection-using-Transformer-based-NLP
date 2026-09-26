@@ -141,3 +141,25 @@
 2026-08-06 09:08:33,565 - verify_qa - INFO - =========================================
 2026-08-06 09:08:33,565 - verify_qa - INFO -    ALL QUALITY ASSURANCE CHECKS PASSED   
 2026-08-06 09:08:33,566 - verify_qa - INFO - =========================================
+2026-08-20 07:31:52,420 - run_pipeline - INFO - =========================================
+2026-08-20 07:31:52,420 - run_pipeline - INFO -    STARTING END-TO-END DATASET PIPELINE   
+2026-08-20 07:31:52,420 - run_pipeline - INFO - =========================================
+2026-08-20 07:31:52,420 - run_pipeline - INFO - ========== RUNNING download_datasets.py ==========
+2026-08-20 07:31:58,271 - download_datasets - INFO - --- STARTING DATASET DOWNLOAD PIPELINE ---
+2026-08-20 07:31:58,271 - download_datasets - INFO - Davidson dataset already exists in raw folder.
+2026-08-20 07:31:58,272 - download_datasets - INFO - HateXplain dataset already exists in raw folder.
+2026-08-20 07:31:58,272 - download_datasets - INFO - OLID dataset already exists in raw folder.
+2026-08-20 07:31:58,272 - download_datasets - INFO - Jigsaw dataset already exists in raw folder.
+2026-08-20 07:31:58,272 - download_datasets - INFO - Civil Comments dataset already exists in raw folder.
+2026-08-20 07:31:58,272 - download_datasets - INFO - --- DATASET DOWNLOAD PIPELINE COMPLETED ---
+2026-08-20 07:31:58,479 - run_pipeline - INFO - Finished download_datasets.py in 6.06 seconds.
+2026-08-20 07:31:58,479 - run_pipeline - INFO - Output:
+2026-08-20 07:31:58,271 - download_datasets - INFO - --- STARTING DATASET DOWNLOAD PIPELINE ---
+2026-08-20 07:31:58,271 - download_datasets - INFO - Davidson dataset already exists in raw folder.
+2026-08-20 07:31:58,272 - download_datasets - INFO - HateXplain dataset already exists in raw folder.
+2026-08-20 07:31:58,272 - download_datasets - INFO - OLID dataset already exists in raw folder.
+2026-08-20 07:31:58,272 - download_datasets - INFO - Jigsaw dataset already exists in raw folder.
+2026-08-20 07:31:58,272 - download_datasets - INFO - Civil Comments dataset already exists in raw folder.
+2026-08-20 07:31:58,272 - download_datasets - INFO - --- DATASET DOWNLOAD PIPELINE COMPLETED ---
+2026-08-20 07:31:58,479 - run_pipeline - INFO - ========== RUNNING validate_dataset.py ==========
+2026-08-20 07:31:59,175 - validate_dataset - INFO - --- STARTING DATASET VALIDATION PIPELINE ---

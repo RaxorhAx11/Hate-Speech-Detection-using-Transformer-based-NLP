@@ -8,12 +8,12 @@ export const Footer: React.FC = () => {
     <footer className="w-full bg-brand-primary text-white border-t border-hairline/10 py-12 px-6 md:px-8 mt-auto">
       <div className="mx-auto max-w-7xl">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 pb-8 border-b border-hairline/10">
-          
+
           {/* Left block - Project summary */}
           <div className="col-span-1 md:col-span-6 flex flex-col justify-between">
             <div className="space-y-3">
               <span className="text-coral text-[11px] font-mono uppercase tracking-[0.28px] font-bold block">
-                NLP ACADEMIC PROJECT
+                RaxorhAx- NLP PROJECT
               </span>
               <h3 className="text-xl font-display font-light text-white leading-tight max-w-sm">
                 Hate Speech Detection using Transformer NLP
@@ -79,7 +79,7 @@ export const Footer: React.FC = () => {
             &copy; {new Date().getFullYear()} Hate Speech Detection Project. All rights reserved.
           </div>
           <div className="mt-4 sm:mt-0 font-mono text-[10px]">
-            <span>COLLEGE NLP MODEL WORKBENCH</span>
+            <span>NLP MODEL WORKBENCH</span>
           </div>
         </div>
 

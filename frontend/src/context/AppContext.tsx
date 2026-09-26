@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { api } from "../api/client";
+import { api, getApiBaseUrl } from "../api/client";
 import type { HealthResponse, ModelInfoResponse, Probabilities, MetricsResponse } from "../api/client";
 
 export type TabType = "home" | "prediction" | "history" | "settings" | "about";
@@ -47,7 +47,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   // Settings & Configuration States
   const [apiUrl, setApiUrl] = useState(() => {
-    return localStorage.getItem("hate_speech_api_url") || "http://127.0.0.1:8000";
+    return localStorage.getItem("hate_speech_api_url") || getApiBaseUrl();
   });
   
   const [voiceVolume, setVoiceVolume] = useState(() => {

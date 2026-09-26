@@ -51,7 +51,8 @@ def evaluate_model(config: AppConfig) -> Tuple[Dict[str, float], pd.DataFrame]:
     test_df = pd.read_csv(test_path)
     
     # Prepare batch inference
-    texts = test_df["clean_text"].tolist()
+    text_col = "clean_text" if "clean_text" in test_df.columns else "text"
+    texts = test_df[text_col].tolist()
     labels = test_df["label"].tolist()
     
     all_probabilities = []
@@ -92,13 +93,18 @@ def evaluate_model(config: AppConfig) -> Tuple[Dict[str, float], pd.DataFrame]:
     all_predictions = np.array(all_predictions)
     labels = np.array(labels)
     
-    # Compute Metrics
+    # Compute Overall Metrics
     accuracy = accuracy_score(labels, all_predictions)
     precision_macro, recall_macro, f1_macro, _ = precision_recall_fscore_support(
         labels, all_predictions, average="macro", zero_division=0
     )
     precision_weighted, recall_weighted, f1_weighted, _ = precision_recall_fscore_support(
         labels, all_predictions, average="weighted", zero_division=0
+    )
+    
+    # Compute Per-Class Metrics
+    precision_per_class, recall_per_class, f1_per_class, support_per_class = precision_recall_fscore_support(
+        labels, all_predictions, average=None, zero_division=0
     )
     
     # ROC AUC Score (one-vs-rest)
@@ -116,14 +122,32 @@ def evaluate_model(config: AppConfig) -> Tuple[Dict[str, float], pd.DataFrame]:
         "f1_weighted": f1_weighted,
         "roc_auc_macro": roc_auc
     }
+    for i in range(3):
+        label_name = LABEL_MAP[i]
+        metrics[f"{label_name.lower().replace(' ', '_')}_precision"] = precision_per_class[i]
+        metrics[f"{label_name.lower().replace(' ', '_')}_recall"] = recall_per_class[i]
+        metrics[f"{label_name.lower().replace(' ', '_')}_f1"] = f1_per_class[i]
+        metrics[f"{label_name.lower().replace(' ', '_')}_support"] = int(support_per_class[i])
     
-    # Create evaluation outputs folder
+    # Create evaluation outputs folders
     eval_dir = "evaluation_plots"
+    assets_dir = "assets"
     os.makedirs(eval_dir, exist_ok=True)
+    os.makedirs(assets_dir, exist_ok=True)
     
+    # Compute confusion matrix
+    cm = confusion_matrix(labels, all_predictions)
+    cm_df = pd.DataFrame(
+        cm,
+        index=[f"True_{LABEL_MAP[i].replace(' ', '_')}" for i in range(3)],
+        columns=[f"Pred_{LABEL_MAP[i].replace(' ', '_')}" for i in range(3)]
+    )
+    cm_df.to_csv(os.path.join(eval_dir, "confusion_matrix.csv"))
+    cm_df.to_csv(os.path.join(assets_dir, "confusion_matrix.csv"))
+
     # Write Classification Report
     class_report_str = classification_report(
-        labels, all_predictions, target_names=[LABEL_MAP[i] for i in range(3)], zero_division=0
+        labels, all_predictions, target_names=[LABEL_MAP[i] for i in range(3)], digits=4, zero_division=0
     )
     report_file = os.path.join(eval_dir, "classification_report.txt")
     with open(report_file, "w", encoding="utf-8") as f:
@@ -133,11 +157,13 @@ def evaluate_model(config: AppConfig) -> Tuple[Dict[str, float], pd.DataFrame]:
         f.write(f"Precision (Macro): {precision_macro:.4f}\n")
         f.write(f"Recall (Macro): {recall_macro:.4f}\n")
         f.write(f"F1 (Macro): {f1_macro:.4f}\n")
-        f.write(f"ROC-AUC (Macro): {roc_auc:.4f}\n")
+        f.write(f"ROC-AUC (Macro): {roc_auc:.4f}\n\n")
+        f.write("=== CONFUSION MATRIX ===\n")
+        f.write(cm_df.to_string())
+        f.write("\n")
     logger.info(f"Classification report saved to {report_file}")
     
     # Generate confusion matrix plot
-    cm = confusion_matrix(labels, all_predictions)
     plt.figure(figsize=(8, 6))
     sns.heatmap(
         cm,
@@ -147,14 +173,16 @@ def evaluate_model(config: AppConfig) -> Tuple[Dict[str, float], pd.DataFrame]:
         xticklabels=[LABEL_MAP[i] for i in range(3)],
         yticklabels=[LABEL_MAP[i] for i in range(3)]
     )
-    plt.title("Confusion Matrix")
+    plt.title("Confusion Matrix - Hate Speech Detection (Test Set)")
     plt.ylabel("True Label")
     plt.xlabel("Predicted Label")
     plt.tight_layout()
     cm_path = os.path.join(eval_dir, "confusion_matrix.png")
-    plt.savefig(cm_path)
+    plt.savefig(cm_path, dpi=300)
+    cm_assets_path = os.path.join(assets_dir, "confusion_matrix.png")
+    plt.savefig(cm_assets_path, dpi=300)
     plt.close()
-    logger.info(f"Confusion Matrix saved to {cm_path}")
+    logger.info(f"Confusion Matrix saved to {cm_path} and {cm_assets_path}")
     
     # Generate ROC Curve Plot
     plt.figure(figsize=(8, 6))

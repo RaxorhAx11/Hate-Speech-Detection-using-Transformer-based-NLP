@@ -1,5 +1,28 @@
+# Python & Bytecode
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
 
-saved_models/
-evaluation_plots/*.png
+# Intermediate model training runs and checkpoints (keep saved_models/best_model)
+saved_models/current_run/
+saved_models/**/checkpoint-*/
+
+# Logs
+logs/
+*.log
+
+# Frontend dependencies and cache
+frontend/node_modules/
+frontend/.cache/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

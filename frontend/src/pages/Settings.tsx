@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
+import { getDefaultApiBaseUrl } from "../api/client";
 import { Server, Volume2, Info, Check, RefreshCw, AlertTriangle, Sliders } from "lucide-react";
 
 export const Settings: React.FC = () => {
@@ -51,8 +52,10 @@ export const Settings: React.FC = () => {
   };
 
   const handleResetUrl = () => {
-    setInputUrl("http://127.0.0.1:8000");
-    updateApiUrl("http://127.0.0.1:8000");
+    localStorage.removeItem("hate_speech_api_url");
+    const defaultUrl = getDefaultApiBaseUrl();
+    setInputUrl(defaultUrl);
+    updateApiUrl(defaultUrl);
   };
 
   return (

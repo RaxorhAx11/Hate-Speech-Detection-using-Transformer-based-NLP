@@ -112,7 +112,8 @@ def train_model(
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
     def tokenize_function(examples):
-        return tokenizer(examples["clean_text"], truncation=True, max_length=max_length)
+        text_col = "clean_text" if "clean_text" in examples else "text"
+        return tokenizer(examples[text_col], truncation=True, max_length=max_length)
     
     # Convert pandas DataFrames to HF datasets
     train_ds = Dataset.from_pandas(train_df)
@@ -256,7 +257,9 @@ def main():
     
     # Load training and validation datasets
     train_path = os.path.join(config.dataset.data_dir, "train.csv")
-    val_path = os.path.join(config.dataset.data_dir, "val.csv")
+    val_path = os.path.join(config.dataset.data_dir, "validation.csv")
+    if not os.path.exists(val_path):
+        val_path = os.path.join(config.dataset.data_dir, "val.csv")
     
     if not os.path.exists(train_path) or not os.path.exists(val_path):
         logger.error(f"Dataset files not found. Please run dataset_builder.py first.")

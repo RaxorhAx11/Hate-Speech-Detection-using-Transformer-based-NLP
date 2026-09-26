@@ -18,18 +18,34 @@ class HateSpeechInference:
     def __init__(self, model_path: str = None, device: str = None):
         self.config = load_config()
         self.max_length = self.config.model.max_length
-        self.model_path = model_path or os.path.join(self.config.training.output_dir, "best_model")
-        
-        if not os.path.exists(self.model_path):
-            raise FileNotFoundError(f"Model path {self.model_path} not found. Train the model first.")
-            
-        logger.info(f"Loading tokenizer and model from {self.model_path}...")
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
-        # Load model with output_attentions=True to support interpretability
-        self.model = AutoModelForSequenceClassification.from_pretrained(
-            self.model_path,
-            output_attentions=True
+        self.model_path = (
+            model_path
+            or os.environ.get("HF_MODEL_ID")
+            or os.environ.get("MODEL_PATH")
+            or os.path.join(self.config.training.output_dir, "best_model")
         )
+        
+        # Check if local path exists or attempt loading from Hugging Face Hub
+        if not os.path.exists(self.model_path):
+            logger.info(f"Local path '{self.model_path}' not found. Attempting to load from Hugging Face Hub...")
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+                self.model = AutoModelForSequenceClassification.from_pretrained(
+                    self.model_path,
+                    output_attentions=True
+                )
+            except Exception as e:
+                raise FileNotFoundError(
+                    f"Model checkpoint '{self.model_path}' could not be loaded locally or from Hugging Face Hub. Error: {e}"
+                )
+        else:
+            logger.info(f"Loading tokenizer and model from local path: {self.model_path}...")
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+            # Load model with output_attentions=True to support interpretability
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                self.model_path,
+                output_attentions=True
+            )
         
         # Determine device
         device_str = device or self.config.model.device

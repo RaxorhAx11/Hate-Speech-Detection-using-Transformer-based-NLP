@@ -3,10 +3,12 @@ import time
 import logging
 import json
 from typing import Dict, Any, List
+import gradio as gr
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field, ConfigDict
 from fastapi.middleware.cors import CORSMiddleware
 from inference import HateSpeechInference, LABEL_MAP
 from config import load_config
@@ -51,18 +53,17 @@ inference_engine = None
 
 # Define API schemas
 class PredictionRequest(BaseModel):
-    text: str = Field(..., min_length=1, description="The raw input text to analyze for hate speech", example="I hate you so much!")
+    text: str = Field(..., min_length=1, description="The raw input text to analyze for hate speech", json_schema_extra={"example": "I hate you so much!"})
 
 class BatchPredictionRequest(BaseModel):
-    texts: List[str] = Field(..., min_items=1, description="List of raw input texts to analyze", example=["I hate you!", "I love programming."])
+    texts: List[str] = Field(..., min_length=1, description="List of raw input texts to analyze", json_schema_extra={"example": ["I hate you!", "I love programming."]})
 
 class Probabilities(BaseModel):
     Safe: float = Field(..., description="Probability of safe text in percentage")
     Offensive: float = Field(..., description="Probability of offensive text in percentage")
     Hate_Speech: float = Field(..., alias="Hate Speech", description="Probability of hate speech in percentage")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 class PredictionResponse(BaseModel):
     prediction: str = Field(..., description="The predicted class label (Safe, Offensive, or Hate Speech)")
@@ -74,29 +75,37 @@ class BatchPredictionResponse(BaseModel):
     predictions: List[PredictionResponse] = Field(..., description="List of prediction results")
     total_processing_time_ms: float = Field(..., description="Total processing time in milliseconds")
 
+# Helper to resolve model path from environment or local directory
+def get_model_target() -> str:
+    """Returns local path or Hugging Face Hub ID for the model."""
+    return os.environ.get("HF_MODEL_ID") or os.environ.get("MODEL_PATH") or os.path.join(config.training.output_dir, "best_model")
+
 # Startup model loading
 @app.on_event("startup")
 def load_model_on_startup():
     """Loads the model and tokenizer into memory on API startup."""
     global inference_engine
-    model_path = os.path.join(config.training.output_dir, "best_model")
+    model_target = get_model_target()
     
-    if not os.path.exists(model_path):
+    is_local = os.path.exists(model_target)
+    is_hf_hub = "/" in model_target and not os.path.isabs(model_target)
+    
+    if not is_local and not is_hf_hub:
         logger.warning(
             json.dumps({
                 "event": "model_load_skipped",
                 "reason": "checkpoint_missing",
-                "path": model_path,
-                "msg": "Best model not found. Predictions will fail until model is trained."
+                "path": model_target,
+                "msg": "Model target not found. Predictions will fail until model is provided."
             })
         )
     else:
         try:
-            inference_engine = HateSpeechInference(model_path=model_path)
+            inference_engine = HateSpeechInference(model_path=model_target)
             logger.info(
                 json.dumps({
                     "event": "model_loaded",
-                    "path": model_path,
+                    "path": model_target,
                     "device": str(inference_engine.device)
                 })
             )
@@ -257,16 +266,13 @@ def predict_hate_speech(request: PredictionRequest):
     """
     global inference_engine
     if inference_engine is None:
-        model_path = os.path.join(config.training.output_dir, "best_model")
-        if os.path.exists(model_path):
-            try:
-                inference_engine = HateSpeechInference(model_path=model_path)
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Failed to load model dynamically: {e}")
-        else:
+        model_target = get_model_target()
+        try:
+            inference_engine = HateSpeechInference(model_path=model_target)
+        except Exception as e:
             raise HTTPException(
                 status_code=503,
-                detail="Model is not available. Please run training (train.py) before attempting predictions."
+                detail=f"Model is not available. Please verify model files or HF_MODEL_ID. Error: {e}"
             )
             
     # Perform prediction
@@ -304,16 +310,13 @@ def batch_predict_hate_speech(request: BatchPredictionRequest):
     """
     global inference_engine
     if inference_engine is None:
-        model_path = os.path.join(config.training.output_dir, "best_model")
-        if os.path.exists(model_path):
-            try:
-                inference_engine = HateSpeechInference(model_path=model_path)
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Failed to load model dynamically: {e}")
-        else:
+        model_target = get_model_target()
+        try:
+            inference_engine = HateSpeechInference(model_path=model_target)
+        except Exception as e:
             raise HTTPException(
                 status_code=503,
-                detail="Model is not available. Please run training (train.py) before attempting predictions."
+                detail=f"Model is not available. Please verify model files or HF_MODEL_ID. Error: {e}"
             )
             
     # Run batch prediction
@@ -349,6 +352,128 @@ def batch_predict_hate_speech(request: BatchPredictionRequest):
         })
     )
     return response
+
+# ---------------------------------------------------------------------------
+# Gradio UI Integration (100% Free on Hugging Face Spaces SDK: gradio)
+# ---------------------------------------------------------------------------
+def gradio_predict(text: str):
+    if not text or not text.strip():
+        return "Please enter text to analyze.", "0.0%", {}, "0.0 ms"
+    req = PredictionRequest(text=text)
+    res = predict_hate_speech(req)
+    probs = {
+        "Safe": round(res.probabilities.Safe / 100.0, 4),
+        "Offensive": round(res.probabilities.Offensive / 100.0, 4),
+        "Hate Speech": round(getattr(res.probabilities, "Hate Speech") / 100.0, 4),
+    }
+    return res.prediction, f"{res.confidence:.1f}%", probs, f"{res.processing_time_ms:.1f} ms"
+
+def gradio_batch_predict(text_block: str):
+    lines = [line.strip() for line in (text_block or "").split("\n") if line.strip()]
+    if not lines:
+        return [["No input lines", "-", "-", "-"]]
+    req = BatchPredictionRequest(texts=lines)
+    res = batch_predict_hate_speech(req)
+    rows = []
+    for pred in res.predictions:
+        hate_prob = getattr(pred.probabilities, "Hate Speech")
+        rows.append([
+            pred.prediction,
+            f"{pred.confidence:.1f}%",
+            f"Safe: {pred.probabilities.Safe:.1f}% | Off: {pred.probabilities.Offensive:.1f}% | Hate: {hate_prob:.1f}%",
+            f"{pred.processing_time_ms:.1f} ms"
+        ])
+    return rows
+
+with gr.Blocks(title="Hate Speech Detection AI") as demo:
+    gr.Markdown(
+        """
+        # 🛡️ Advanced Hate Speech Detection AI
+        ### Production Transformer NLP Pipeline (Safe vs. Offensive vs. Hate Speech)
+        *Trained on 5 unified toxicity benchmarks: Davidson, OLID, HateXplain, Jigsaw, and Civil Comments.*
+        """
+    )
+    
+    with gr.Tabs():
+        with gr.TabItem("🔍 Single Text Scanner"):
+            with gr.Row():
+                with gr.Column(scale=3):
+                    text_input = gr.Textbox(
+                        label="Input Text",
+                        placeholder="Enter comment or message to analyze...",
+                        lines=3
+                    )
+                    with gr.Row():
+                        scan_btn = gr.Button("🚀 Analyze Text", variant="primary")
+                        clear_btn = gr.Button("Clear")
+                    
+                    gr.Examples(
+                        examples=[
+                            ["Have a wonderful and blessed day!"],
+                            ["This movie was so terrible and boring."],
+                            ["You are an absolute idiot, shut up!"],
+                            ["Go back to your country, you disgusting animals."]
+                        ],
+                        inputs=text_input,
+                        label="Quick Test Examples (Click to test)"
+                    )
+                with gr.Column(scale=2):
+                    pred_output = gr.Textbox(label="Predicted Category", interactive=False)
+                    conf_output = gr.Textbox(label="Confidence", interactive=False)
+                    probs_output = gr.Label(label="Class Probability Distribution", num_top_classes=3)
+                    time_output = gr.Textbox(label="Latency", interactive=False)
+                    
+            scan_btn.click(
+                fn=gradio_predict,
+                inputs=[text_input],
+                outputs=[pred_output, conf_output, probs_output, time_output]
+            )
+            clear_btn.click(lambda: ("", "", {}, ""), outputs=[text_input, pred_output, probs_output, time_output])
+
+        with gr.TabItem("📑 Batch Analyzer"):
+            batch_input = gr.Textbox(
+                label="Enter multiple sentences (one per line)",
+                placeholder="First comment\nSecond comment\nThird comment...",
+                lines=5
+            )
+            batch_btn = gr.Button("⚡ Analyze Batch", variant="primary")
+            batch_output = gr.Dataframe(
+                headers=["Prediction", "Confidence", "Probability Breakdown", "Latency"],
+                datatype=["str", "str", "str", "str"],
+                label="Batch Prediction Results"
+            )
+            batch_btn.click(fn=gradio_batch_predict, inputs=[batch_input], outputs=[batch_output])
+            
+        with gr.TabItem("📊 Model Metrics & Trust"):
+            gr.Markdown(
+                """
+                ### Stratified Holdout Test Set Performance (1,500 samples)
+                - **Accuracy**: 85.73%
+                - **Macro F1 Score**: 85.54%
+                - **Macro Precision**: 85.91%
+                - **Macro Recall**: 85.73%
+                - **Macro ROC-AUC**: 95.74%
+                """
+            )
+            cm_path = os.path.join("evaluation_plots", "confusion_matrix.png")
+            if os.path.exists(cm_path):
+                gr.Image(value=cm_path, label="Evaluation Confusion Matrix")
+
+        with gr.TabItem("🌐 API Documentation"):
+            gr.Markdown(
+                """
+                ### REST API Endpoints
+                This deployment also exposes production REST API endpoints:
+                - `POST /predict` - Single text inference
+                - `POST /batch-predict` - Batch texts inference
+                - `GET /health` - Service & model health check
+                - `GET /metrics` - Real-time model evaluation metrics
+                - **Interactive Swagger Documentation**: Access [`/docs`](/docs) on this server.
+                """
+            )
+
+# Mount Gradio onto the existing FastAPI application at root /
+app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
     import uvicorn

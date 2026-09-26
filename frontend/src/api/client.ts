@@ -52,13 +52,35 @@ export interface MetricsResponse {
   };
 }
 
-// Fetch API base URL from settings (localStorage) or fall back to default
+// Returns the default API base URL based on runtime environment
+export const getDefaultApiBaseUrl = (): string => {
+  // 1. Build-time environment variable (e.g. VITE_API_URL)
+  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, "");
+  }
+
+  // 2. Browser runtime environment:
+  if (typeof window !== "undefined" && window.location) {
+    // When running in local Vite dev server (port 5173), target FastAPI dev server (port 8000)
+    if (window.location.port === "5173") {
+      return "http://127.0.0.1:8000";
+    }
+    // In production / deployed space (e.g. Hugging Face Spaces, Docker container),
+    // frontend is served by FastAPI on the same host and port.
+    return window.location.origin;
+  }
+
+  return "http://127.0.0.1:8000";
+};
+
+// Fetch API base URL: custom user setting > default
 export const getApiBaseUrl = (): string => {
   const savedUrl = localStorage.getItem("hate_speech_api_url");
   if (savedUrl) {
     return savedUrl.replace(/\/$/, ""); // Strip trailing slash
   }
-  return "http://127.0.0.1:8000";
+  return getDefaultApiBaseUrl();
 };
 
 // Helper for fetching with a timeout
